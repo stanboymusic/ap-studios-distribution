@@ -7,7 +7,7 @@ router = APIRouter(prefix="/artists", tags=["Artists"])
 
 ARTISTS_DB = []
 
-@router.post("", response_model=ArtistResponse)
+@router.post("/", response_model=ArtistResponse)
 def create_artist(payload: ArtistCreate):
     artist = Artist(
         name=payload.name,
@@ -16,6 +16,6 @@ def create_artist(payload: ArtistCreate):
     ARTISTS_DB.append(artist)
     return artist
 
-@router.get("", response_model=List[ArtistResponse])
+@router.get("/", response_model=List[ArtistResponse])
 def list_artists():
     return ARTISTS_DB

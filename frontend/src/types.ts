@@ -10,3 +10,35 @@ export interface Release {
   type: string;
   status: string;
 }
+
+export type WizardStatus = "draft" | "invalid" | "valid" | "ready";
+
+export interface ReleaseDraft {
+  id: string;
+  status: WizardStatus;
+  owner_party: {
+    party_name: string;
+    dpid: string;
+  };
+  ddex: {
+    standard: "ERN";
+    message_version: "4.3.1";
+    release_profile: "SimpleAudioSingle";
+    message_type: "NewReleaseMessage";
+  };
+  artist?: {
+    display_name: string;
+    country: string;
+    primary_language: string;
+    is_rights_holder: boolean;
+  };
+  release?: {
+    title: { text: string; language: string };
+    parental_advisory: "None" | "Explicit" | "Clean";
+    genres: { primary: string; secondary?: string };
+  };
+  tracks?: any[];
+  artwork?: any;
+  deals?: any;
+  validation?: any;
+}

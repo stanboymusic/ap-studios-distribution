@@ -7,7 +7,7 @@ const ReleaseList = ({ refresh }: { refresh: number }) => {
 
   const fetchReleases = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/releases');
+      const response = await axios.get('http://127.0.0.1:8000/api/releases/');
       setReleases(response.data);
     } catch (error) {
       console.error(error);

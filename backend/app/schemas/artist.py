@@ -10,3 +10,7 @@ class ArtistResponse(BaseModel):
     id: UUID
     name: str
     type: str
+
+class Artist(BaseModel):
+    name: str
+    is_solo: bool = True

@@ -22,7 +22,7 @@ const ReleaseForm = ({ onReleaseCreated }: { onReleaseCreated: () => void }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://127.0.0.1:8000/api/releases', { title, artist_id: artistId });
+      await axios.post('http://127.0.0.1:8000/api/releases/', { title, artist_id: artistId });
       setTitle('');
       setArtistId('');
       onReleaseCreated();
@@ -41,6 +41,7 @@ const ReleaseForm = ({ onReleaseCreated }: { onReleaseCreated: () => void }) => 
         required
       />
       <select
+        aria-label="Seleccionar artista"
         value={artistId}
         onChange={(e) => setArtistId(e.target.value)}
         required
