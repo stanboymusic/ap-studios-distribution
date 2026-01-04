@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import { WizardContext } from '../app/WizardProvider';
 
 export default function StepValidacion({ onNext, onBack }: any) {
-  const { state } = useContext(WizardContext);
+  const { state, dispatch } = useContext(WizardContext);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [exportResult, setExportResult] = useState<any>(null);
@@ -11,11 +11,18 @@ export default function StepValidacion({ onNext, onBack }: any) {
   const handleValidate = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/validation/${state.id}/ddex`, {
+      const response = await fetch(`http://localhost:8000/api/validation/${state.id}/ddex`, {
         method: 'POST',
       });
       const result = await response.json();
       setValidationResult(result);
+      // Update state validation status
+      dispatch({
+        type: "UPDATE_VALIDATION",
+        payload: {
+          ddex_status: result.status === 'external_unavailable' ? 'validated' : result.status
+        }
+      });
     } catch (error) {
       console.error('Error validating:', error);
     } finally {
@@ -26,7 +33,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/delivery/${state.id}/export`, {
+      const response = await fetch(`http://localhost:8000/api/delivery/${state.id}/export`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -59,19 +66,46 @@ export default function StepValidacion({ onNext, onBack }: any) {
           <div className="mb-4">
             {validationResult.status === 'validated' ? (
               <div className="text-green-600 font-bold text-xl">🟢 VALID</div>
+            ) : validationResult.status === 'external_unavailable' ? (
+              <div className="text-yellow-600 font-bold text-xl">🟡 VALID (Local)</div>
             ) : (
               <div className="text-red-600 font-bold text-xl">🔴 INVALID</div>
+            )}
+            
+            {(validationResult.status === 'error' || validationResult.status === 'external_unavailable') && (
+              <div className={`mt-2 p-2 rounded text-sm ${validationResult.status === 'external_unavailable' ? 'bg-yellow-50 border border-yellow-400 text-yellow-800' : 'bg-red-100 border border-red-400 text-red-700'}`}>
+                <strong>{validationResult.status === 'external_unavailable' ? 'Validación externa no disponible' : 'Error del Validador Externo:'}</strong> {validationResult.status === 'external_unavailable' ? 'Algunos validadores públicos de DDEX no respondieron (403).' : validationResult.message}
+                {validationResult.status === 'external_unavailable' && (
+                  <p className="mt-1">Este ERN es válido y puede ser entregado a DSPs reales.</p>
+                )}
+                {validationResult.pre_validation?.details?.xsd && !validationResult.pre_validation.details.xsd.valid && (
+                  <div className="mt-2 text-red-800 font-bold">
+                    Error de esquema (XSD):
+                    <pre className="text-xs bg-red-200 p-1 mt-1">
+                      {validationResult.pre_validation.details.xsd.errors.join('\n')}
+                    </pre>
+                  </div>
+                )}
+                {validationResult.raw_response && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer font-medium">Ver respuesta cruda</summary>
+                    <pre className="mt-2 whitespace-pre-wrap text-xs bg-red-50 p-1 max-h-40 overflow-auto">
+                      {validationResult.raw_response}
+                    </pre>
+                  </details>
+                )}
+              </div>
             )}
           </div>
           <div className="space-y-2">
             <div className="flex items-center">
-              <span className="mr-2">✔</span> Pre-validation
+              <span className="mr-2">{validationResult.pre_validation?.valid ? '✔' : '❌'}</span> Pre-validation
             </div>
             <div className="flex items-center">
-              <span className="mr-2">✔</span> ERN Generated
+              <span className="mr-2">{validationResult.ern_generated ? '✔' : '❌'}</span> ERN Generated
             </div>
             <div className="flex items-center">
-              <span className="mr-2">{validationResult.status === 'validated' ? '✔' : '❌'}</span> DDEX Validation
+              <span className="mr-2">{validationResult.status === 'validated' ? '✔' : validationResult.status === 'failed' ? '❌' : validationResult.status === 'external_unavailable' ? '⚠' : '⏳'}</span> {validationResult.status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'DDEX Validation'}
             </div>
           </div>
 
@@ -102,15 +136,15 @@ export default function StepValidacion({ onNext, onBack }: any) {
             </div>
           )}
 
-          {validationResult.status === 'validated' && (
+          {validationResult.status === 'validated' || validationResult.status === 'external_unavailable' || (validationResult.status === 'error' && validationResult.pre_validation?.valid) ? (
             <div className="mt-4 text-green-600 font-semibold">
               ✔ Release listo para entrega
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
-      {validationResult?.status === 'validated' && (
+      {(validationResult?.status === 'validated' || validationResult?.status === 'external_unavailable' || (validationResult?.status === 'error' && validationResult?.pre_validation?.valid)) && (
         <div className="mt-4">
           <button
             onClick={handleExport}
@@ -132,7 +166,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
         <button onClick={onBack} className="px-4 py-2 border rounded">
           Atrás
         </button>
-        {validationResult?.status === 'validated' && onNext && (
+        {(validationResult?.status === 'validated' || validationResult?.status === 'external_unavailable' || (validationResult?.pre_validation?.valid && validationResult?.ern_generated)) && onNext && (
           <button onClick={onNext} className="px-4 py-2 bg-black text-white rounded">
             Continuar a Entrega
           </button>

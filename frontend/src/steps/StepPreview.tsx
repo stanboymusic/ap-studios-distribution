@@ -22,8 +22,12 @@ export default function StepPreview({ onNext, onBack }: Props) {
     setLoading(true);
     setError('');
     try {
-      const payload = buildErnPayload(state);
-      const response = await fetch('http://127.0.0.1:8000/api/validation/preview-ern', {
+      const payload = {
+        ...buildErnPayload(state),
+        release_id: state.id
+      };
+      console.log('DEBUG: ERN Payload being sent:', payload);
+      const response = await fetch('http://localhost:8000/api/validation/preview-ern', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -35,7 +39,7 @@ export default function StepPreview({ onNext, onBack }: Props) {
       setPreviewData(data);
 
       // Also generate XML
-      const xmlResponse = await fetch('http://127.0.0.1:8000/api/validation/generate-ern', {
+      const xmlResponse = await fetch('http://localhost:8000/api/validation/generate-ern', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -65,6 +69,13 @@ export default function StepPreview({ onNext, onBack }: Props) {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Preview & Validate</h2>
       <p className="text-gray-500">Review the ERN that will be generated</p>
+
+      {(!state.tracks || state.tracks.length === 0) && (
+        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <strong>Atención:</strong> No se han detectado tracks en este lanzamiento. 
+          Vuelve al paso de "Tracks" para añadir al menos uno.
+        </div>
+      )}
 
       {previewData && (
         <>
@@ -117,6 +128,7 @@ export default function StepPreview({ onNext, onBack }: Props) {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
+                  <th className="text-left">Model</th>
                   <th className="text-left">Use Type</th>
                   <th className="text-left">Start Date</th>
                   <th className="text-left">End Date</th>
@@ -126,6 +138,7 @@ export default function StepPreview({ onNext, onBack }: Props) {
               <tbody>
                 {previewData.deals.map((deal: any, index: number) => (
                   <tr key={index} className="border-b">
+                    <td>{deal.model}</td>
                     <td>{deal.use_type}</td>
                     <td>{deal.start_date}</td>
                     <td>{deal.end_date || '∞'}</td>

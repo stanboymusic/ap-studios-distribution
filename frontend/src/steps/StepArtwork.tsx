@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { WizardContext } from '../app/WizardProvider';
 
 export default function StepArtwork({ onNext, onBack }: any) {
+  const { dispatch } = useContext(WizardContext);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
@@ -19,12 +21,15 @@ export default function StepArtwork({ onNext, onBack }: any) {
     formData.append('cover', file);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/assets/cover', {
+      const response = await fetch('http://localhost:8000/api/assets/cover', {
         method: 'POST',
         body: formData,
       });
       const result = await response.json();
       setUploadResult(result);
+      if (result.status === 'ok') {
+        dispatch({ type: "UPDATE_RELEASE", payload: { artwork: result } });
+      }
     } catch (error) {
       console.error('Upload error:', error);
     } finally {

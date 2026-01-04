@@ -86,6 +86,9 @@ class SandboxSFTPServer:
         print(f"DSP Sandbox SFTP server started on port {self.port}")
         print(f"Root directory: {self.root_dir}")
 
+        # Generar llave una sola vez para evitar lentitud
+        server_key = paramiko.RSAKey.generate(2048)
+
         # Iniciar thread de procesamiento
         processor_thread = threading.Thread(target=self.process_deliveries, daemon=True)
         processor_thread.start()
@@ -95,14 +98,9 @@ class SandboxSFTPServer:
             while self.running:
                 client_sock, addr = sock.accept()
                 print(f"Connection from {addr}")
-                transport = paramiko.Transport(client_sock)
-                transport.add_server_key(paramiko.RSAKey.generate(2048))
-
-                server = DummyServer()
-                transport.start_server(server=server)
-
-                # Handle in thread
-                t = threading.Thread(target=self.handle_client, args=(transport,))
+                
+                # Manejar cada conexión en un thread para no bloquear el loop principal
+                t = threading.Thread(target=self.handle_connection, args=(client_sock, server_key))
                 t.daemon = True
                 t.start()
 
@@ -111,22 +109,49 @@ class SandboxSFTPServer:
         finally:
             sock.close()
 
-    def handle_client(self, transport):
-        """Maneja una conexión cliente."""
+    def handle_connection(self, client_sock, server_key):
+        """Maneja el handshake inicial y el servidor SFTP."""
+        transport = None
         try:
-            channel = transport.accept(20)
-            if channel is None:
-                return
+            transport = paramiko.Transport(client_sock)
+            transport.add_server_key(server_key)
 
             server = DummyServer()
+            try:
+                transport.start_server(server=server)
+            except paramiko.SSHException:
+                print("SSH negotiation failed.")
+                return
+
+            channel = transport.accept(20)
+            if channel is None:
+                print("No channel requested.")
+                return
+
+            print("Waiting for subsystem request...")
             server.event.wait(10)
             if channel.active:
+                print("Starting SFTP subsystem...")
+                # SFTPServer in paramiko handles the subsystem on the channel
+                # We need to keep the transport alive while the channel is active
                 sftp_server = SFTPServer(channel, str(self.root_dir), server)
-                sftp_server.start()
+                
+                while channel.active:
+                    time.sleep(0.5)
+                
+                print("SFTP session closed by client.")
+            else:
+                print("Channel not active.")
         except Exception as e:
-            print(f"Error handling client: {e}")
+            print(f"Error handling connection: {e}")
         finally:
-            transport.close()
+            if transport:
+                print("Closing transport.")
+                transport.close()
+
+    def handle_client(self, transport):
+        # Esta función ya no es necesaria con el nuevo flujo pero la dejamos vacía por compatibilidad si se llama
+        pass
 
     def process_deliveries(self):
         """Procesa entregas en incoming."""

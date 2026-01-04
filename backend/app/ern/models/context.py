@@ -12,10 +12,10 @@ class MessageInfo(BaseModel):
     update_indicator: str = "OriginalMessage"
 
 class ErnContext(BaseModel):
-    ern_version: str = "4.3"
-    profile: str
-    language: str
+    version: str = "4.3"
+    profile: str = "AudioAlbum"
+    language: str = "en"
+    message_id: str
     sender: PartyInfo
     recipient: PartyInfo
-    message: MessageInfo
     graph_fingerprint: str

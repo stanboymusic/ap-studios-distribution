@@ -1,9 +1,15 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { WizardContext } from "../app/WizardProvider";
 
 export default function StepArtist({ onNext, onBack }: any) {
-  const { dispatch } = useContext(WizardContext);
+  const { state, dispatch } = useContext(WizardContext);
   const [name, setName] = useState("");
+
+  useEffect(() => {
+    if (state.artist?.display_name) {
+      setName(state.artist.display_name);
+    }
+  }, [state.artist]);
 
   const save = () => {
     if (!name) return alert("Nombre obligatorio");

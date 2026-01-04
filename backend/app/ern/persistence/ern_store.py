@@ -12,7 +12,7 @@ class ErnStore:
     def _hash(self, data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
 
-    def save(self, release_id: str, xml: bytes, context) -> dict:
+    def save(self, release_id: str, xml: bytes, context, validation_results=None) -> dict:
         release_dir = self.base / release_id
         release_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,7 +38,8 @@ class ErnStore:
             "profile": context.profile,
             "ern_version": "4.3",
             "language": context.language,
-            "generated_at": datetime.utcnow().isoformat() + "Z"
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "validation": validation_results
         }
 
         (vdir / "meta.json").write_text(json.dumps(meta, indent=2))

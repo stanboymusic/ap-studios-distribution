@@ -1,15 +1,15 @@
 from app.ern.builder.xml_utils import sub
 
-def build_party_list(parent, parties, registry):
-    pl = sub(parent, "PartyList")
+def build_party_list(parent, parties, registry, ns):
+    pl = sub(parent, "PartyList", ns=ns)
 
     for party in parties.values():
-        p = sub(pl, "Party")
+        p = sub(pl, "Party", ns=ns)
         ref = registry.party_ref(party.internal_id)
 
-        sub(p, "PartyReference", ref)
-        sub(p, "PartyName", party.name)
+        sub(p, "PartyReference", ref, ns=ns)
+        sub(p, "PartyName", party.name, ns=ns)
 
         if party.party_id:
-            pid = sub(p, "PartyId")
-            sub(pid, "ProprietaryId", party.party_id)
+            pid = sub(p, "PartyId", ns=ns)
+            sub(pid, "ProprietaryId", party.party_id, ns=ns)

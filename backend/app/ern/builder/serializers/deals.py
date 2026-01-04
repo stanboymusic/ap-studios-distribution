@@ -1,21 +1,22 @@
 from app.ern.builder.xml_utils import sub
 
-def build_deal_list(parent, deals, registry):
-    dl = sub(parent, "DealList")
+def build_deal_list(parent, deals, registry, ns):
+    dl = sub(parent, "DealList", ns=ns)
 
     for d in deals.values():
-        deal = sub(dl, "Deal")
-        sub(deal, "DealReference", registry.deal_ref(d.internal_id))
+        deal = sub(dl, "Deal", ns=ns)
+        
+        sub(deal, "DealReleaseReference",
+            registry.release_ref(d.release), ns=ns)
 
-        sub(deal, "ReleaseReference",
-            registry.release_ref(d.release))
+        deal_terms = sub(deal, "DealTerms", ns=ns)
 
         for t in d.territories:
-            sub(deal, "TerritoryCode", t)
+            sub(deal_terms, "TerritoryCode", t, ns=ns)
 
-        sub(deal, "StartDate", d.start_date)
+        val_period = sub(deal_terms, "ValidityPeriod", ns=ns)
+        sub(val_period, "StartDate", d.start_date, ns=ns)
 
         for cm in d.commercial_models:
-            cm_el = sub(deal, "CommercialModelType")
-            sub(cm_el, "CommercialModelType", cm.model)
-            sub(cm_el, "UseType", cm.use_type)
+            sub(deal_terms, "CommercialModelType", cm.model, ns=ns)
+            sub(deal_terms, "UsageType", cm.use_type, ns=ns)

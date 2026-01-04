@@ -4,3 +4,37 @@ body {
   margin: 0;
   font-family: Arial, sans-serif;
 }
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline-event {
+  border-left: 3px solid #ccc;
+  padding-left: 12px;
+}
+
+.timeline-event.accepted {
+  border-color: green;
+}
+
+.timeline-event.rejected {
+  border-color: red;
+}
+
+.timeline-event.processing {
+  border-color: orange;
+}
+
+.time {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.dsp {
+  margin-left: 6px;
+  font-size: 0.8em;
+  color: #888;
+}

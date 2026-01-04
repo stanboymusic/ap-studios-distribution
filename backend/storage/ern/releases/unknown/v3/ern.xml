@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NewReleaseMessage xmlns="http://ddex.net/xml/ern/43" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" AvsVersionId="4.3" LanguageAndScriptCode="en">
+  <MessageHeader>
+    <MessageId>msg-1767458204679</MessageId>
+    <MessageCreatedDateTime>2026-01-02T22:52:46Z</MessageCreatedDateTime>
+    <MessageSender>
+      <PartyId>PA-DPIDA-202402050E-4</PartyId>
+      <PartyName>AP Studios</PartyName>
+    </MessageSender>
+    <MessageRecipient>
+      <PartyId>DPID-RECIPIENT</PartyId>
+      <PartyName>Recipient DSP</PartyName>
+    </MessageRecipient>
+  </MessageHeader>
+  <PartyList>
+    <Party>
+      <PartyReference>P-1</PartyReference>
+      <PartyName>jhsa</PartyName>
+    </Party>
+    <Party>
+      <PartyReference>P-2</PartyReference>
+      <PartyName>AP Studios</PartyName>
+      <PartyId>
+        <ProprietaryId>PA-DPIDA-202402050E-4</ProprietaryId>
+      </PartyId>
+    </Party>
+  </PartyList>
+  <ResourceList/>
+  <ReleaseList>
+    <Release>
+      <ReleaseReference>R-1</ReleaseReference>
+      <ReleaseType>SimpleAudioSingle</ReleaseType>
+      <ReferenceTitle>
+        <TitleText>kjaskaj</TitleText>
+      </ReferenceTitle>
+      <OriginalReleaseDate>2026-01-01</OriginalReleaseDate>
+    </Release>
+  </ReleaseList>
+  <DealList>
+    <Deal>
+      <DealReference>D-1</DealReference>
+      <ReleaseReference>R-1</ReleaseReference>
+      <TerritoryCode>Worldwide</TerritoryCode>
+      <StartDate>2026-01-01</StartDate>
+      <CommercialModelType>
+        <CommercialModelType>SubscriptionModel</CommercialModelType>
+        <UseType>Stream</UseType>
+      </CommercialModelType>
+    </Deal>
+  </DealList>
+</NewReleaseMessage>

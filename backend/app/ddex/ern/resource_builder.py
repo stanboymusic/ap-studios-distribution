@@ -31,9 +31,18 @@ def build_resource_list(root, tracks: list, cover_filename: str = None):
         etree.SubElement(display_artist, "PartyReference").text = "P-ARTIST-1"
         etree.SubElement(display_artist, "ArtistRole").text = "MainArtist"
 
+        # File reference
+        isrc = track.get("isrc", "UNKNOWN")
+        file_element = etree.SubElement(sr, "File")
+        etree.SubElement(file_element, "FileName").text = f"resources/audio/{isrc}.wav"
+
     # Image
     if cover_filename:
         img = etree.SubElement(resource_list, "Image", ImageReference="IMG-001")
         etree.SubElement(img, "ImageType").text = "FrontCoverImage"
+        
+        # File reference for Image
+        file_element = etree.SubElement(img, "File")
+        etree.SubElement(file_element, "FileName").text = "resources/images/cover.jpg"
 
     return resource_list

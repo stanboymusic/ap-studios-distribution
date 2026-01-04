@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NewReleaseMessage xmlns="http://ddex.net/xml/ern/43" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" AvsVersionId="4.3" LanguageAndScriptCode="en">
+  <MessageHeader>
+    <MessageId>msg-1767464035846</MessageId>
+    <MessageCreatedDateTime>2026-01-02T22:52:46Z</MessageCreatedDateTime>
+    <MessageSender>
+      <PartyId>PA-DPIDA-202402050E-4</PartyId>
+      <PartyName>AP Studios</PartyName>
+    </MessageSender>
+    <MessageRecipient>
+      <PartyId>DPID-RECIPIENT</PartyId>
+      <PartyName>Recipient DSP</PartyName>
+    </MessageRecipient>
+  </MessageHeader>
+  <PartyList>
+    <Party>
+      <PartyReference>P-1</PartyReference>
+      <PartyName>stan</PartyName>
+    </Party>
+    <Party>
+      <PartyReference>P-2</PartyReference>
+      <PartyName>AP Studios</PartyName>
+      <PartyId>
+        <ProprietaryId>PA-DPIDA-202402050E-4</ProprietaryId>
+      </PartyId>
+    </Party>
+  </PartyList>
+  <ResourceList>
+    <SoundRecording>
+      <ResourceReference>SR-1</ResourceReference>
+      <SoundRecordingId>
+        <ISRC>US-ABC-00</ISRC>
+      </SoundRecordingId>
+      <SoundRecordingType>MusicalWorkSoundRecording</SoundRecordingType>
+      <Duration>PT180S</Duration>
+      <ReferenceTitle>
+        <TitleText/>
+      </ReferenceTitle>
+      <File>
+        <FileName>resources/audio/track-0.wav</FileName>
+      </File>
+    </SoundRecording>
+  </ResourceList>
+  <ReleaseList>
+    <Release>
+      <ReleaseReference>R-1</ReleaseReference>
+      <ReleaseId>
+        <ICPN>1234567890123</ICPN>
+      </ReleaseId>
+      <ReleaseType>SimpleAudioSingle</ReleaseType>
+      <Title>
+        <TitleText>panas</TitleText>
+      </Title>
+      <OriginalReleaseDate>2026-01-29</OriginalReleaseDate>
+      <ReleaseResourceReferenceList>
+        <ReleaseResourceReference>SR-1</ReleaseResourceReference>
+      </ReleaseResourceReferenceList>
+    </Release>
+  </ReleaseList>
+  <DealList>
+    <Deal>
+      <DealReleaseReference>R-1</DealReleaseReference>
+      <DealTerms>
+        <TerritoryCode>Worldwide</TerritoryCode>
+        <ValidityPeriod>
+          <StartDate>2026-01-01</StartDate>
+        </ValidityPeriod>
+        <CommercialModelType>SubscriptionModel</CommercialModelType>
+        <UsageType>Stream</UsageType>
+      </DealTerms>
+    </Deal>
+  </DealList>
+</NewReleaseMessage>

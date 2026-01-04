@@ -25,6 +25,7 @@ class ReleaseUpdate(BaseModel):
 
 class ReleaseResponse(BaseModel):
     id: UUID
+    release_id: UUID
     title: str
     type: str
     status: str

@@ -1,0 +1,20 @@
+{
+  "release_id": "2242f897-a64b-4867-a0c4-7437dcf24ff5",
+  "version": 1,
+  "hash": "2f681d22ea5ae033d02e684ea47b13a41dbb3c99d813a114f8da766589be6000",
+  "source_graph_hash": "56793724194494bb7c8ed289772a0c34262833ef216eb4a5f00c0caa914edf65",
+  "profile": "AudioAlbum",
+  "ern_version": "4.3",
+  "language": "en",
+  "generated_at": "2026-01-04T16:03:53.741834Z",
+  "validation": {
+    "xsd": {
+      "valid": true,
+      "errors": []
+    },
+    "schematron": {
+      "valid": true,
+      "errors": []
+    }
+  }
+}

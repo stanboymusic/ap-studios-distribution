@@ -2,10 +2,10 @@ import { ReleaseDraft } from "../types";
 
 export function buildErnPayload(state: ReleaseDraft) {
   const payload: any = {
-    context: {
-      ern_version: state.ddex.message_version,
-      profile: state.ddex.release_profile,
-      language: "en", // TODO: from state
+    ern: {
+      version: state.ern?.version || "4.3",
+      profile: state.ern?.profile || "AudioAlbum",
+      message_id: `msg-${Date.now()}`,
       sender: {
         party_id: state.owner_party.dpid,
         name: state.owner_party.party_name
@@ -13,12 +13,6 @@ export function buildErnPayload(state: ReleaseDraft) {
       recipient: {
         party_id: "DPID-RECIPIENT", // TODO
         name: "Recipient DSP"
-      },
-      message: {
-        thread_id: `thread-${state.id}`,
-        message_id: `msg-${Date.now()}`,
-        created_at: new Date().toISOString(),
-        update_indicator: "OriginalMessage"
       }
     },
     parties: {
@@ -42,7 +36,7 @@ export function buildErnPayload(state: ReleaseDraft) {
         artist: "party-artist",
         parental_advisory: state.release?.parental_advisory || "None",
         genres: state.release?.genres || { primary: "Pop" },
-        release_date: "2026-01-01", // TODO: from state
+        release_date: state.release?.original_release_date || "2026-01-01",
         upc: "1234567890123" // TODO
       }
     },
@@ -53,8 +47,8 @@ export function buildErnPayload(state: ReleaseDraft) {
         startDate: "2026-01-01",
         commercialModels: [
           {
-            type: "SubscriptionModel",
-            percentage: 100
+            model: "SubscriptionModel",
+            use_type: "Stream",
           }
         ]
       }
@@ -67,23 +61,31 @@ export function buildErnPayload(state: ReleaseDraft) {
       payload.resources[`resource-track-${index}`] = {
         title: track.title,
         isrc: track.isrc || `US-ABC-${index.toString().padStart(2, '0')}`,
-        duration: track.duration || 180,
-        resource_type: "SoundRecording",
-        artists: ["party-artist"]
+        duration_seconds: track.duration_seconds || track.duration || 180,
+        type: "SoundRecording",
+        artists: ["party-artist"],
+        file: track.file_path ? track.file_path.split('/').pop() : `track-${index}.wav`
       };
     });
-
-    // Update release with tracks
+    
+    // Update release with resources
     payload.releases["release-main"].tracks = Object.keys(payload.resources);
   }
 
   // Add artwork
   if (state.artwork) {
-    payload.resources["resource-artwork"] = {
-      filename: state.artwork.filename || "cover.jpg",
-      resource_type: "Image",
+    const artworkId = "resource-artwork";
+    payload.resources[artworkId] = {
+      file: state.artwork.filename || "cover.jpg",
+      type: "Image",
       image_type: "FrontCoverImage"
     };
+    
+    // Add artwork to release resources
+    if (!payload.releases["release-main"].tracks) {
+      payload.releases["release-main"].tracks = [];
+    }
+    payload.releases["release-main"].tracks.push(artworkId);
   }
 
   return payload;

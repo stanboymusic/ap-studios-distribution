@@ -25,6 +25,7 @@ def create_release(data: ReleaseCreate):
 
     return ReleaseResponse(
         id=release.id,
+        release_id=release.id,
         title=release.title,
         type=release.release_type.value,
         status=release.status

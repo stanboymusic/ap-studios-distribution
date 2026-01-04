@@ -11,6 +11,10 @@ const initialDraft: ReleaseDraft = {
     party_name: "AP Studios",
     dpid: "PA-DPIDA-202402050E-4",
   },
+  ern: {
+    version: "4.3",
+    profile: "AudioAlbum",
+  },
   ddex: {
     standard: "ERN",
     message_version: "4.3.1",

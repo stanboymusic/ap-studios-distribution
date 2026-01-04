@@ -4,7 +4,12 @@ def build_release_list(root, release_data: dict, tracks: list, has_cover: bool =
     release_list = etree.SubElement(root, "ReleaseList")
 
     release = etree.SubElement(release_list, "Release", ReleaseReference="R-001")
-    etree.SubElement(release, "ReleaseType").text = "Album"
+    
+    # Use release_type from data if available
+    r_type = release_data.get("release_type", "Album")
+    if hasattr(r_type, "value"): # Handle Enum
+        r_type = r_type.value
+    etree.SubElement(release, "ReleaseType").text = str(r_type)
 
     ref_title = etree.SubElement(release, "ReferenceTitle")
     etree.SubElement(ref_title, "TitleText").text = release_data.get("title", {}).get("text", "Unknown Album")

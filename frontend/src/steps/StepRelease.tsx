@@ -1,19 +1,30 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { WizardContext } from "../app/WizardProvider";
 import axios from "axios";
 
 export default function StepRelease({ onNext, onBack }: any) {
-  const { dispatch } = useContext(WizardContext);
+  const { state, dispatch } = useContext(WizardContext);
   const [title, setTitle] = useState("");
   const [releaseType, setReleaseType] = useState("Single");
   const [originalReleaseDate, setOriginalReleaseDate] = useState("");
   const [language, setLanguage] = useState("es");
   const [territories, setTerritories] = useState("Worldwide");
 
+  useEffect(() => {
+    if (state.release) {
+      setTitle(state.release.title?.text || "");
+      setReleaseType(state.release.release_type || "Single");
+      setOriginalReleaseDate(state.release.original_release_date || "");
+      if (state.release.territories?.[0]) {
+        setTerritories(state.release.territories[0]);
+      }
+    }
+  }, [state.release]);
+
   const save = async () => {
     if (!title || !originalReleaseDate) return alert("Título y fecha de lanzamiento obligatorios");
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/releases/', {
+      const response = await axios.post('http://localhost:8000/api/releases/', {
         title,
         release_type: releaseType,
         original_release_date: originalReleaseDate,

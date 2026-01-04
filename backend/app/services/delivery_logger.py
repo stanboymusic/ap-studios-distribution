@@ -1,6 +1,6 @@
 from typing import List
 from uuid import UUID
-from backend.app.models.delivery_event import DeliveryEvent, EventType
+from app.models.delivery_event import DeliveryEvent, EventType
 
 # Persistencia simple en memoria (puede migrar a DB después)
 DELIVERY_EVENTS_DB: List[DeliveryEvent] = []

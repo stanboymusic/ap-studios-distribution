@@ -5,6 +5,7 @@ from typing import List, Optional
 class ReleaseDraft:
     def __init__(self):
         self.id: UUID = uuid4()
+        self.release_id: UUID = self.id
         self.status: str = "draft"
         self.created_at: str = datetime.utcnow().isoformat()
         self.updated_at: str = datetime.utcnow().isoformat()

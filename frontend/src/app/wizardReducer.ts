@@ -4,17 +4,26 @@ export type WizardAction =
   | { type: "INIT"; payload: ReleaseDraft }
   | { type: "UPDATE_ARTIST"; payload: any }
   | { type: "UPDATE_RELEASE"; payload: any }
+  | { type: "UPDATE_ERN"; payload: any }
+  | { type: "UPDATE_TRACKS"; payload: any[] }
   | { type: "SET_STATUS"; payload: any }
   | { type: "SET_ID"; payload: string };
 
 export function wizardReducer(state: ReleaseDraft, action: WizardAction) {
+  console.log('[Wizard Action]', action.type, action.payload);
   switch (action.type) {
     case "INIT":
       return action.payload;
     case "UPDATE_ARTIST":
       return { ...state, artist: action.payload };
     case "UPDATE_RELEASE":
-      return { ...state, release: action.payload };
+      return { ...state, release: { ...state.release, ...action.payload } };
+    case "UPDATE_ERN":
+      return { ...state, ern: action.payload };
+    case "UPDATE_TRACKS":
+      return { ...state, tracks: action.payload };
+    case "UPDATE_VALIDATION":
+      return { ...state, validation: action.payload };
     case "SET_STATUS":
       return { ...state, status: action.payload };
     case "SET_ID":

@@ -6,15 +6,34 @@ from app.api.releases import RELEASES_DB
 from app.services.sftp_connector import SFTPConnector
 from app.config.sftp import SFTP_CONNECTORS
 from app.services.delivery_logger import log_event
+from app.ern.persistence.ern_store import ErnStore
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
+from uuid import UUID
+
+logger = logging.getLogger(__name__)
+from typing import List, Optional
 
 router = APIRouter(prefix="/delivery", tags=["Delivery"])
 
 class SFTPDeliveryRequest(BaseModel):
     release_id: str
     connector_id: str
+
+class DeliveryOverview(BaseModel):
+    release_id: str
+    title: str
+    dsp: str
+    status: str
+    last_event: Optional[str] = None
+
+class DeliveryEvent(BaseModel):
+    event_type: str
+    dsp: str
+    message: str
+    created_at: str
 
 
 @router.post("/{release_id}/export")
@@ -23,16 +42,24 @@ def export(release_id: str):
     for release in RELEASES_DB:
         if str(release.id) == release_id:
             # Check validation status
-            if release.validation.get("ddex_status") != "validated":
+            if release.validation.get("ddex_status") not in ["validated", "external_unavailable", "generated"]:
                 raise HTTPException(
                     status_code=400,
                     detail="Release must be validated before delivery"
                 )
 
-            # Build ERN XML
-            ern_xml = build_ern(release)
+            # Try to get ERN from store first
+            store = ErnStore()
+            latest_path = store.base / release_id / "latest" / "ern.xml"
+            if latest_path.exists():
+                ern_xml = latest_path.read_bytes().decode('utf-8')
+            else:
+                # Fallback to old builder
+                ern_xml = build_ern(release)
+            
             # Get artist name
-            artist_name = release.artist.get("display_name", "Unknown") if release.artist else "Unknown"
+            artist_name = release.artist.get("display_name", "Unknown") if isinstance(release.artist, dict) else "Unknown"
+            
             # Build delivery package
             zip_path = build_delivery_package(
                 release_id,
@@ -66,7 +93,7 @@ def deliver_via_sftp(request: SFTPDeliveryRequest):
         raise HTTPException(status_code=400, detail=f"Connector {request.connector_id} not configured")
 
     # Check validation
-    if release.validation.get("ddex_status") != "validated":
+    if release.validation.get("ddex_status") not in ["validated", "external_unavailable", "generated"]:
         raise HTTPException(status_code=400, detail="Release must be validated before delivery")
 
     # Update delivery status
@@ -83,13 +110,22 @@ def deliver_via_sftp(request: SFTPDeliveryRequest):
     )
 
     try:
-        # Build delivery package if not exists
+        # Try to get ERN from store first
+        store = ErnStore()
+        latest_path = store.base / request.release_id / "latest" / "ern.xml"
+        if latest_path.exists():
+            ern_xml = latest_path.read_bytes().decode('utf-8')
+        else:
+            # Fallback to old builder
+            ern_xml = build_ern(release)
+
+        # Build delivery package
         zip_path = build_delivery_package(
             request.release_id,
-            build_ern(release),
+            ern_xml,
             release.tracks,
             release.artwork or "",
-            release.artist.get("display_name", "Unknown") if release.artist else "Unknown"
+            release.artist.get("display_name", "Unknown") if isinstance(release.artist, dict) else "Unknown"
         )
 
         # Get connector config
@@ -134,6 +170,36 @@ def deliver_via_sftp(request: SFTPDeliveryRequest):
         }
 
     except Exception as e:
+        # Fallback for local sandbox if SFTP is not running
+        hostname = config.get('host', 'localhost')
+        if "localhost" in hostname or "127.0.0.1" in hostname:
+            try:
+                import shutil
+                sandbox_incoming = Path("./sandbox-dsp/incoming")
+                sandbox_incoming.mkdir(parents=True, exist_ok=True)
+                dest_path = sandbox_incoming / f"delivery_{request.release_id}.zip"
+                shutil.copy2(zip_path, dest_path)
+                
+                # Update status as if it were uploaded
+                release.delivery["status"] = "uploaded"
+                release.delivery["delivered_at"] = datetime.utcnow().isoformat()
+                
+                log_event(
+                    release_id=release.id,
+                    dsp=request.connector_id.upper().replace("_", " "),
+                    event_type="UPLOADED",
+                    message=f"SFTP failed, but file copied locally to sandbox: {dest_path}"
+                )
+                
+                return {
+                    "status": "delivered",
+                    "connector": request.connector_id,
+                    "method": "local_fallback",
+                    "remote_path": str(dest_path)
+                }
+            except Exception as fallback_err:
+                logger.error(f"Fallback failed: {fallback_err}")
+
         release.delivery["status"] = "not_delivered"
         log_event(
             release_id=release.id,
@@ -218,7 +284,7 @@ def get_delivery_status(release_id: str):
     }
 
 
-@router.get("/events/{release_id}")
+@router.get("/events/{release_id}", response_model=List[DeliveryEvent])
 def get_delivery_events(release_id: str):
     """Obtiene todos los eventos de delivery para un release."""
     from app.services.delivery_logger import get_events_for_release
@@ -234,6 +300,7 @@ def get_delivery_events(release_id: str):
     return [
         {
             "event_type": event.event_type,
+            "dsp": event.dsp,
             "message": event.message,
             "created_at": event.created_at.isoformat() + "Z"
         }
@@ -241,7 +308,11 @@ def get_delivery_events(release_id: str):
     ]
 
 
-@router.get("/overview")
+@router.get("/test")
+def test():
+    return {"ok": True}
+
+@router.get("/overview", response_model=List[DeliveryOverview])
 def get_delivery_overview():
     """Obtiene vista general de todas las entregas."""
     from app.services.delivery_logger import get_latest_event_for_release

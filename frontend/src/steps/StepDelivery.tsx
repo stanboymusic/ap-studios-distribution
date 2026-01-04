@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect } from 'react';
 import { WizardContext } from '../app/WizardProvider';
+import { DeliveryTimeline } from '../components/DeliveryTimeline';
 
 export default function StepDelivery({ onBack }: any) {
   const { state } = useContext(WizardContext);
@@ -8,14 +9,14 @@ export default function StepDelivery({ onBack }: any) {
   const [delivering, setDelivering] = useState(false);
   const [deliveryStatus, setDeliveryStatus] = useState<any>(null);
 
-  const isValidated = state.validation?.ddex_status === 'validated';
+  const isValidated = state.validation?.ddex_status === 'validated' || state.validation?.ddex_status === 'external_unavailable';
 
   // Polling de estado de delivery
   useEffect(() => {
     if (state.delivery?.status && state.delivery.status !== 'not_delivered') {
       const pollStatus = async () => {
         try {
-          const response = await fetch(`http://127.0.0.1:8000/delivery/status/${state.id}`);
+          const response = await fetch(`http://localhost:8000/api/delivery/status/${state.id}`);
           const status = await response.json();
           setDeliveryStatus(status);
         } catch (error) {
@@ -37,7 +38,7 @@ export default function StepDelivery({ onBack }: any) {
 
     setExporting(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/delivery/${state.id}/export`, {
+      const response = await fetch(`http://localhost:8000/api/delivery/${state.id}/export`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -66,7 +67,7 @@ export default function StepDelivery({ onBack }: any) {
 
     setDelivering(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/delivery/sftp', {
+      const response = await fetch('http://localhost:8000/api/delivery/sftp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,7 +79,7 @@ export default function StepDelivery({ onBack }: any) {
       if (response.ok) {
         alert('Entrega iniciada al DSP Sandbox');
         // Trigger status update
-        const statusResponse = await fetch(`http://127.0.0.1:8000/delivery/status/${state.id}`);
+        const statusResponse = await fetch(`http://localhost:8000/api/delivery/status/${state.id}`);
         const status = await statusResponse.json();
         setDeliveryStatus(status);
       } else {
@@ -107,7 +108,7 @@ export default function StepDelivery({ onBack }: any) {
             <span className="mr-2">✔</span> ERN generado
           </div>
           <div className="flex items-center">
-            <span className="mr-2">{isValidated ? '✔' : '❌'}</span> Validación DDEX
+            <span className="mr-2">{state.validation?.ddex_status === 'validated' ? '✔' : state.validation?.ddex_status === 'external_unavailable' ? '⚠' : '❌'}</span> {state.validation?.ddex_status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'Validación DDEX'}
           </div>
           <div className="flex items-center">
             <span className="mr-2">✔</span> Assets verificados
@@ -190,6 +191,13 @@ export default function StepDelivery({ onBack }: any) {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {deliveryStatus && (
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Historial de Eventos</h3>
+          <DeliveryTimeline releaseId={state.id} />
         </div>
       )}
 

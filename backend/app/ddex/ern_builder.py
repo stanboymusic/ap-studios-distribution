@@ -8,8 +8,35 @@ from app.ern.builder.json_parser import ErnJsonParser
 
 
 def build_ern(release):
-    tracks = release.tracks
-    cover_filename = release.artwork
+    # Ensure release_data is a dictionary for the builders
+    if not isinstance(release, dict):
+        # Safely extract title text
+        title_attr = getattr(release, 'title', 'Unknown')
+        if isinstance(title_attr, dict):
+            title_text = title_attr.get('text', 'Unknown')
+        else:
+            title_text = str(title_attr)
+
+        # Safely extract artist name
+        artist_attr = getattr(release, 'artist', None)
+        if isinstance(artist_attr, dict):
+            artist_name = artist_attr.get('display_name', 'Unknown Artist')
+        else:
+            artist_name = str(artist_attr) if artist_attr else "Unknown Artist"
+
+        release_data = {
+            "title": {"text": title_text},
+            "artist": {"display_name": artist_name},
+            "tracks": getattr(release, 'tracks', []),
+            "artwork": getattr(release, 'artwork', None),
+            "release_type": getattr(release, 'release_type', 'Single'),
+        }
+    else:
+        release_data = release
+
+    tracks = release_data.get("tracks", [])
+    cover_filename = release_data.get("artwork")
+
     root = etree.Element("NewReleaseMessage", nsmap={
         None: "http://ddex.net/xml/ern/43"
     })
@@ -18,14 +45,14 @@ def build_ern(release):
     build_message_header(root)
 
     # Party List
-    artist_name = release.get("artist", {}).get("display_name", "Unknown Artist")
+    artist_name = release_data.get("artist", {}).get("display_name", "Unknown Artist")
     build_party_list(root, artist_name)
 
     # Resource List
     build_resource_list(root, tracks, cover_filename)
 
     # Release List
-    build_release_list(root, release, tracks, cover_filename is not None)
+    build_release_list(root, release_data, tracks, cover_filename is not None)
 
     # Deal List
     build_deal_list(root)

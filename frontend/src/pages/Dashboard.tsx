@@ -1,18 +1,6 @@
 import { useState, useEffect } from 'react';
-
-interface DeliveryOverview {
-  release_id: string;
-  title: string;
-  dsp: string;
-  status: string;
-  last_event: string;
-}
-
-interface DeliveryEvent {
-  event_type: string;
-  message: string;
-  created_at: string;
-}
+import { apiFetch } from '../api/client';
+import { DeliveryOverview, DeliveryEvent } from '../api/schema';
 
 export default function Dashboard() {
   const [overview, setOverview] = useState<DeliveryOverview[]>([]);
@@ -26,11 +14,11 @@ export default function Dashboard() {
 
   const loadOverview = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/delivery/overview');
-      const data = await response.json();
+      const data = await apiFetch<DeliveryOverview[]>('/delivery/overview');
       setOverview(data);
     } catch (error) {
       console.error('Error loading overview:', error);
+      setOverview([]);
     } finally {
       setLoading(false);
     }
@@ -38,11 +26,11 @@ export default function Dashboard() {
 
   const loadEvents = async (releaseId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/delivery/events/${releaseId}`);
-      const data = await response.json();
+      const data = await apiFetch<DeliveryEvent[]>(`/delivery/events/${releaseId}`);
       setEvents(data);
     } catch (error) {
       console.error('Error loading events:', error);
+      setEvents([]);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { WizardContext } from "../app/WizardProvider";
 import axios from "axios";
 
@@ -6,9 +6,18 @@ export default function StepTracks({ onNext, onBack }: any) {
   const { state, dispatch } = useContext(WizardContext);
   const [title, setTitle] = useState("");
   const [trackNumber, setTrackNumber] = useState(1);
+  const [isrc, setIsrc] = useState("");
   const [explicit, setExplicit] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [tracks, setTracks] = useState<any[]>(state.tracks || []);
+  const [tracks, setTracks] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (state.tracks) {
+      console.log('DEBUG: Loading tracks from state:', state.tracks);
+      setTracks(state.tracks);
+      setTrackNumber(state.tracks.length + 1);
+    }
+  }, [state.tracks]);
 
   const addTrack = async () => {
     if (!title || !file) {
@@ -21,12 +30,21 @@ export default function StepTracks({ onNext, onBack }: any) {
     formData.append('title', title);
     formData.append('track_number', trackNumber.toString());
     formData.append('explicit', explicit.toString());
+    if (isrc) formData.append('isrc', isrc);
     formData.append('audio', file);
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/tracks', formData, {
+      console.log('DEBUG: Adding track...', { title, trackNumber, explicit, file: file.name });
+      const response = await axios.post('http://localhost:8000/api/tracks/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      console.log('DEBUG: Track response:', response.data);
+
+      if (response.data.error) {
+        alert("Error del servidor: " + response.data.error);
+        return;
+      }
 
       const newTrack = {
         track_id: response.data.track_id,
@@ -34,22 +52,32 @@ export default function StepTracks({ onNext, onBack }: any) {
         track_number: response.data.track_number,
         duration_seconds: response.data.duration_seconds,
         explicit: response.data.explicit,
+        isrc: response.data.isrc,
         file_path: response.data.file_path
       };
 
       const updatedTracks = [...tracks, newTrack];
       setTracks(updatedTracks);
-      dispatch({ type: "UPDATE_RELEASE", payload: { ...state.release, tracks: updatedTracks } });
+      dispatch({ type: "UPDATE_TRACKS", payload: updatedTracks });
 
       // Reset form
       setTitle("");
       setTrackNumber(trackNumber + 1);
+      setIsrc("");
       setExplicit(false);
       setFile(null);
     } catch (error) {
       console.error(error);
       alert("Error al añadir track");
     }
+  };
+
+  const handleNext = () => {
+    if (tracks.length === 0) {
+      alert("Debes añadir al menos un track para continuar");
+      return;
+    }
+    onNext();
   };
 
   return (
@@ -74,6 +102,16 @@ export default function StepTracks({ onNext, onBack }: any) {
           placeholder="1"
           value={trackNumber}
           onChange={(e) => setTrackNumber(Number(e.target.value))}
+        />
+      </div>
+
+      <div className="mb-4">
+        <label>ISRC:</label>
+        <input
+          className="border p-2 w-full mt-1"
+          placeholder="Ej: QM-ABC-24-00001"
+          value={isrc}
+          onChange={(e) => setIsrc(e.target.value)}
         />
       </div>
 
@@ -118,7 +156,7 @@ export default function StepTracks({ onNext, onBack }: any) {
         <button onClick={onBack} className="px-4 py-2 border rounded">
           Atrás
         </button>
-        <button onClick={onNext} className="px-4 py-2 bg-black text-white rounded">
+        <button onClick={handleNext} className="px-4 py-2 bg-black text-white rounded">
           Continuar
         </button>
       </div>

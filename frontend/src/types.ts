@@ -20,6 +20,10 @@ export interface ReleaseDraft {
     party_name: string;
     dpid: string;
   };
+  ern: {
+    version: "4.2" | "4.3";
+    profile: "AudioAlbum" | "AudioSingle";
+  };
   ddex: {
     standard: "ERN";
     message_version: "4.3.1";
@@ -41,4 +45,11 @@ export interface ReleaseDraft {
   artwork?: any;
   deals?: any;
   validation?: any;
+}
+
+export interface DeliveryEvent {
+  event_type: string;
+  dsp: string;
+  message: string;
+  created_at: string;
 }
