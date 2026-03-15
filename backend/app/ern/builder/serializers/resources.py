@@ -21,6 +21,14 @@ def build_resource_list(parent, resources, registry, ns):
 
             file_el = sub(sr, "File", ns=ns)
             sub(file_el, "FileName", f"resources/audio/{r.file}", ns=ns)
+
+            # Add Rights Controllers if available
+            if r.rights and "shares" in r.rights:
+                for share in r.rights["shares"]:
+                    rc = sub(sr, "SoundRecordingRightsController", ns=ns)
+                    sub(rc, "PartyReference", registry.party_ref(share["party_id"]), ns=ns)
+                    sub(rc, "RightsControllerRole", share.get("role", "RightsOwner"), ns=ns)
+                    sub(rc, "RightSharePercentage", str(share["percentage"]), ns=ns)
             
         elif r.type == "Image":
             img = sub(rl, "Image", ns=ns)

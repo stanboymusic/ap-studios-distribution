@@ -2,53 +2,103 @@ import { useState } from 'react';
 import { WizardProvider } from './app/WizardProvider';
 import ReleaseWizard from './pages/ReleaseWizard';
 import Dashboard from './pages/Dashboard';
+import AppShell from './components/layout/AppShell';
+import ReleaseDetail from './pages/ReleaseDetail';
+import SandboxMonitor from './pages/SandboxMonitor';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import AutomationCenter from './pages/AutomationCenter';
+import ValidationCenter from './pages/ValidationCenter';
+import AuthGateway from './pages/AuthGateway';
+import { clearAuthSession, getUserId, getUserRole, type UserRole } from './app/auth';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<'wizard' | 'dashboard'>('wizard');
+  const [currentPage, setCurrentPage] = useState<'wizard' | 'dashboard' | 'releaseDetail' | 'sandbox' | 'analytics' | 'automation' | 'validation'>('dashboard');
+  const [activeReleaseId, setActiveReleaseId] = useState<string | null>(null);
+  const [authVersion, setAuthVersion] = useState(0);
+
+  const role = (getUserRole() || null) as UserRole | null;
+  const userId = getUserId() || undefined;
+
+  // Ensure a tenant is always set (required by backend middleware)
+  if (!localStorage.getItem("tenantId")) {
+    localStorage.setItem("tenantId", "default");
+  }
+
+  if (!role) {
+    return <AuthGateway onSignedIn={() => setAuthVersion((v) => v + 1)} />;
+  }
+
+  void authVersion;
 
   return (
     <WizardProvider>
-      <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
-        <nav className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex">
-                <div className="flex-shrink-0 flex items-center">
-                  <h1 className="text-xl font-bold text-gray-900">AP Studios</h1>
-                </div>
-                <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  <button
-                    onClick={() => setCurrentPage('wizard')}
-                    className={`${
-                      currentPage === 'wizard'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
-                  >
-                    Nuevo Release
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage('dashboard')}
-                    className={`${
-                      currentPage === 'dashboard'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
-                  >
-                    Dashboard
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Main content */}
-        <main>
-          {currentPage === 'wizard' ? <ReleaseWizard /> : <Dashboard />}
-        </main>
-      </div>
+      <AppShell 
+        onNavigate={(page: any) => {
+          if (page === 'Dashboard') setCurrentPage('dashboard');
+          if (page === 'Releases') setCurrentPage('dashboard');
+          if (page === 'Sandbox') setCurrentPage('sandbox');
+          if (page === 'Reporting') setCurrentPage('analytics');
+          if (page === 'Validation') setCurrentPage('validation');
+          if (page === 'Settings') setCurrentPage('automation');
+        }}
+        userRole={role}
+        userId={userId}
+        onLogout={() => {
+          clearAuthSession();
+          setCurrentPage('dashboard');
+          setActiveReleaseId(null);
+          setAuthVersion((v) => v + 1);
+        }}
+        activePage={
+          currentPage === 'dashboard'
+            ? 'Dashboard'
+            : currentPage === 'releaseDetail'
+              ? 'Releases'
+              : currentPage === 'sandbox'
+                ? 'Sandbox'
+                : currentPage === 'analytics'
+                  ? 'Reporting'
+                  : currentPage === 'validation'
+                    ? 'Validation'
+                  : currentPage === 'automation'
+                    ? 'Settings'
+                : 'Wizard'
+        }
+      >
+        {currentPage === 'wizard' ? (
+          <ReleaseWizard onFinish={() => setCurrentPage('dashboard')} />
+        ) : currentPage === 'releaseDetail' && activeReleaseId ? (
+          <ReleaseDetail
+            releaseId={activeReleaseId}
+            onBack={() => setCurrentPage('dashboard')}
+          />
+        ) : currentPage === 'sandbox' ? (
+          role === 'admin' ? <SandboxMonitor /> : <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
+        ) : currentPage === 'analytics' ? (
+          role === 'admin' ? <AnalyticsDashboard /> : <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
+        ) : currentPage === 'validation' ? (
+          role === 'admin' ? (
+            <ValidationCenter
+              onOpenRelease={(id) => {
+                setActiveReleaseId(id);
+                setCurrentPage('releaseDetail');
+              }}
+            />
+          ) : (
+            <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
+          )
+        ) : currentPage === 'automation' ? (
+          role === 'admin' ? <AutomationCenter /> : <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
+        ) : (
+          <Dashboard
+            onNewRelease={() => setCurrentPage('wizard')}
+            onOpenRelease={(id) => {
+              setActiveReleaseId(id);
+              setCurrentPage('releaseDetail');
+            }}
+          />
+        )}
+      </AppShell>
     </WizardProvider>
   );
 }

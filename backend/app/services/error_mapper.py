@@ -1,7 +1,15 @@
 def map_ddex_errors(report: dict):
     mapped = []
 
-    for error in report.get("issues", []):
+    raw_issues = []
+    raw_issues.extend(report.get("issues", []) or [])
+    raw_issues.extend(report.get("errors", []) or [])
+    raw_issues.extend(report.get("warnings", []) or [])
+
+    for error in raw_issues:
+        if not isinstance(error, dict):
+            error = {"message": str(error), "severity": "ERROR"}
+
         # Extraer sección del location
         location = error.get("location", "")
         section = "Unknown"
@@ -17,11 +25,11 @@ def map_ddex_errors(report: dict):
             section = "Parties"
 
         mapped.append({
-            "type": error.get("severity", "ERROR"),
+            "type": error.get("severity", error.get("level", "ERROR")),
             "section": section,
             "message": error.get("message", ""),
             "path": location,
-            "rule": error.get("ruleId", error.get("code", ""))
+            "rule": error.get("ruleId", error.get("code", error.get("rule", "")))
         })
 
     return mapped

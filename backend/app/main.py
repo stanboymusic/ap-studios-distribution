@@ -2,13 +2,56 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import artists, releases, tracks, validation, assets, delivery
+from fastapi.openapi.utils import get_openapi
+from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint
+from app.api import analytics
+from app.api import automation
 import logging
+from app.core.paths import storage_path
+from app.middleware.tenant import TenantContextMiddleware
+from app.middleware.auth import AuthContextMiddleware
+from app.services.tenant_service import TenantService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AP Studios Distribution API v2")
+TenantService.ensure_default_tenant()
+app.add_middleware(TenantContextMiddleware)
+app.add_middleware(AuthContextMiddleware)
+
+
+def custom_openapi():
+    """
+    Make `X-Tenant-Id` discoverable in Swagger UI via an Authorize button.
+    The runtime enforcement still happens in TenantContextMiddleware.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    schema = get_openapi(
+        title=app.title,
+        version="2.0.0",
+        description="Multi-tenant API. Most /api endpoints require X-Tenant-Id.",
+        routes=app.routes,
+    )
+
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})
+    schema["components"]["securitySchemes"]["TenantIdHeader"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Tenant-Id",
+        "description": "Tenant context (e.g. default, labelx).",
+    }
+
+    # Apply globally so Swagger sends it automatically after Authorize.
+    schema["security"] = [{"TenantIdHeader": []}]
+
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,15 +92,25 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
-app.mount("/assets", StaticFiles(directory="storage/assets"), name="assets")
+app.mount("/assets", StaticFiles(directory=str(storage_path("assets"))), name="assets")
 
 app.include_router(artists.router, prefix="/api")
 app.include_router(releases.router, prefix="/api")
 app.include_router(tracks.router, prefix="/api")
 app.include_router(assets.router, prefix="/api")
 app.include_router(validation.router, prefix="/api")
+app.include_router(catalog.router, prefix="/api")
+app.include_router(sandbox.router, prefix="/api")
+app.include_router(dsp.router, prefix="/api")
+app.include_router(tenants.router, prefix="/api")
 print("including delivery router")
 app.include_router(delivery.router, prefix="/api")
+app.include_router(mwn.router, prefix="/api")
+app.include_router(rights.router, prefix="/api")
+app.include_router(dsr.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
+app.include_router(automation.router, prefix="/api")
+app.include_router(fingerprint.router, prefix="/api")
 
 @app.get("/")
 def root():

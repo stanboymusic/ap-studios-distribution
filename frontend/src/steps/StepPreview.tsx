@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { WizardContext } from '../app/WizardProvider';
 import { buildErnPayload } from '../utils/ernPayload';
+import { API_BASE, getApiHeaders } from '../api/client';
 
 interface Props {
   onNext: () => void;
@@ -24,12 +25,13 @@ export default function StepPreview({ onNext, onBack }: Props) {
     try {
       const payload = {
         ...buildErnPayload(state),
-        release_id: state.id
+        release_id: state.id,
+        tenant_id: localStorage.getItem("tenantId") || "default",
       };
       console.log('DEBUG: ERN Payload being sent:', payload);
-      const response = await fetch('http://localhost:8000/api/validation/preview-ern', {
+      const response = await fetch(`${API_BASE}/validation/preview-ern`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getApiHeaders(),
         body: JSON.stringify(payload)
       });
       const data = await response.json();
@@ -39,9 +41,9 @@ export default function StepPreview({ onNext, onBack }: Props) {
       setPreviewData(data);
 
       // Also generate XML
-      const xmlResponse = await fetch('http://localhost:8000/api/validation/generate-ern', {
+      const xmlResponse = await fetch(`${API_BASE}/validation/generate-ern`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getApiHeaders(),
         body: JSON.stringify(payload)
       });
       const xmlData = await xmlResponse.json();
@@ -155,7 +157,7 @@ export default function StepPreview({ onNext, onBack }: Props) {
             <div className="space-y-2">
               {previewData.assets.map((asset: any, index: number) => (
                 <div key={index} className="flex items-center space-x-2">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600 font-bold">[OK]</span>
                   <span>{asset.type.toUpperCase()}: {asset.filename}</span>
                   {asset.format && <span>({asset.format})</span>}
                 </div>

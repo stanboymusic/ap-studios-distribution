@@ -1,0 +1,82 @@
+services:
+  app:
+    build: ./backend
+    container_name: apstudios-api
+    ports:
+      - "8000:8000"
+    environment:
+      VALIDATOR_API_URL: http://validator-api:6060
+      DELIVERY_QUEUE_MODE: celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      INTERNAL_API_BASE_URL: http://app:8000
+      ERN_SIGNING_ENABLED: "true"
+      ERN_SIGNING_REQUIRE_CERT: "false"
+      ERN_SIGNING_KEY_PATH: /app/certs/key.pem
+      ERN_SIGNING_CERT_PATH: /app/certs/cert.pem
+    depends_on:
+      - validator-api
+      - redis
+      - db
+      - minio
+    volumes:
+      - ./backend/storage:/app/storage
+      - ./backend/certs:/app/certs:ro
+
+  delivery-worker:
+    build: ./backend
+    container_name: apstudios-delivery-worker
+    command: celery -A workers.delivery_worker.celery_app worker --loglevel=INFO
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      INTERNAL_API_BASE_URL: http://app:8000
+    depends_on:
+      - redis
+      - app
+    volumes:
+      - ./backend/storage:/app/storage
+      - ./backend/certs:/app/certs:ro
+
+  validator-api:
+    build:
+      context: ./services/ern-validator-api
+      dockerfile: Dockerfile
+    container_name: apstudios-validator-api
+    ports:
+      - "3000:6060"
+
+  redis:
+    image: redis:7-alpine
+    container_name: apstudios-redis
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:15
+    container_name: apstudios-db
+    environment:
+      POSTGRES_DB: apstudios
+      POSTGRES_USER: apstudios
+      POSTGRES_PASSWORD: apstudios
+    ports:
+      - "5432:5432"
+    volumes:
+      - apstudios-postgres:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: apstudios-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: apstudios
+      MINIO_ROOT_PASSWORD: apstudios123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - apstudios-minio:/data
+
+volumes:
+  apstudios-postgres:
+  apstudios-minio:

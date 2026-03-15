@@ -1,0 +1,17 @@
+Iniciar el Sandbox: Ejecuta python sandbox_dsp.py
+
+Cómo acceder: Para entrar "manualmente" y ver los archivos, tendrías que usar un cliente como FileZilla, WinSCP o el comando sftp -P 2222 user@localhost en la terminal.
+
+cd frontend && npm run dev
+
+cd backend
+.\venv\Scripts\activate
+uvicorn app.main:app --reload
+
+
+Arranque:
+cd backend
+.\venv\Scripts\activate
+uvicorn app.main:app --reload
+cd frontend
+npm run dev

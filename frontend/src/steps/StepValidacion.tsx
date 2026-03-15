@@ -1,5 +1,6 @@
 import { useContext, useState } from 'react';
 import { WizardContext } from '../app/WizardProvider';
+import { API_BASE, getApiHeaders } from '../api/client';
 
 export default function StepValidacion({ onNext, onBack }: any) {
   const { state, dispatch } = useContext(WizardContext);
@@ -11,8 +12,9 @@ export default function StepValidacion({ onNext, onBack }: any) {
   const handleValidate = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/validation/${state.id}/ddex`, {
+      const response = await fetch(`${API_BASE}/validation/${state.id}/ddex`, {
         method: 'POST',
+        headers: getApiHeaders(),
       });
       const result = await response.json();
       setValidationResult(result);
@@ -33,8 +35,9 @@ export default function StepValidacion({ onNext, onBack }: any) {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/delivery/${state.id}/export`, {
+      const response = await fetch(`${API_BASE}/delivery/${state.id}/export`, {
         method: 'POST',
+        headers: getApiHeaders(),
       });
       const result = await response.json();
       setExportResult(result);
@@ -65,11 +68,11 @@ export default function StepValidacion({ onNext, onBack }: any) {
           <h3 className="text-lg font-semibold">Estado de Validación</h3>
           <div className="mb-4">
             {validationResult.status === 'validated' ? (
-              <div className="text-green-600 font-bold text-xl">🟢 VALID</div>
+              <div className="text-green-600 font-bold text-xl">VALID</div>
             ) : validationResult.status === 'external_unavailable' ? (
-              <div className="text-yellow-600 font-bold text-xl">🟡 VALID (Local)</div>
+              <div className="text-yellow-600 font-bold text-xl">VALID (Local)</div>
             ) : (
-              <div className="text-red-600 font-bold text-xl">🔴 INVALID</div>
+              <div className="text-red-600 font-bold text-xl">INVALID</div>
             )}
             
             {(validationResult.status === 'error' || validationResult.status === 'external_unavailable') && (
@@ -98,14 +101,19 @@ export default function StepValidacion({ onNext, onBack }: any) {
             )}
           </div>
           <div className="space-y-2">
+            {validationResult.validator_source && (
+              <div className="text-xs text-gray-600">
+                Validator source: <span className="font-mono">{validationResult.validator_source}</span>
+              </div>
+            )}
             <div className="flex items-center">
-              <span className="mr-2">{validationResult.pre_validation?.valid ? '✔' : '❌'}</span> Pre-validation
+              <span className="mr-2 text-xs font-bold">{validationResult.pre_validation?.valid ? '[OK]' : '[ERROR]'}</span> Pre-validation
             </div>
             <div className="flex items-center">
-              <span className="mr-2">{validationResult.ern_generated ? '✔' : '❌'}</span> ERN Generated
+              <span className="mr-2 text-xs font-bold">{validationResult.ern_generated ? '[OK]' : '[ERROR]'}</span> ERN Generated
             </div>
             <div className="flex items-center">
-              <span className="mr-2">{validationResult.status === 'validated' ? '✔' : validationResult.status === 'failed' ? '❌' : validationResult.status === 'external_unavailable' ? '⚠' : '⏳'}</span> {validationResult.status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'DDEX Validation'}
+              <span className="mr-2 text-xs font-bold">{validationResult.status === 'validated' ? '[OK]' : validationResult.status === 'failed' ? '[ERROR]' : validationResult.status === 'external_unavailable' ? '[WARN]' : '[...]'}</span> {validationResult.status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'DDEX Validation'}
             </div>
           </div>
 
@@ -138,7 +146,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
 
           {validationResult.status === 'validated' || validationResult.status === 'external_unavailable' || (validationResult.status === 'error' && validationResult.pre_validation?.valid) ? (
             <div className="mt-4 text-green-600 font-semibold">
-              ✔ Release listo para entrega
+              Release ready for delivery
             </div>
           ) : null}
         </div>
@@ -156,7 +164,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
 
           {exportResult && (
             <div className="mt-2 text-green-600">
-              ✔ Bundle exportado: {exportResult.path}
+              Bundle exported: {exportResult.path}
             </div>
           )}
         </div>

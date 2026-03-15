@@ -4,8 +4,10 @@ import { ReleaseDraft } from "../types";
 
 export const WizardContext = createContext<any>(null);
 
+const releaseId = crypto.randomUUID();
+
 const initialDraft: ReleaseDraft = {
-  id: crypto.randomUUID(),
+  id: releaseId,
   status: "draft",
   owner_party: {
     party_name: "AP Studios",
@@ -20,6 +22,11 @@ const initialDraft: ReleaseDraft = {
     message_version: "4.3.1",
     release_profile: "SimpleAudioSingle",
     message_type: "NewReleaseMessage",
+  },
+  rights: {
+    scope: "release",
+    releaseId: releaseId,
+    shares: [],
   },
 };
 

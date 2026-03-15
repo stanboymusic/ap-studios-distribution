@@ -10,6 +10,7 @@ class ArtistResponse(BaseModel):
     id: UUID
     name: str
     type: str
+    grid: Optional[str] = None
 
 class Artist(BaseModel):
     name: str

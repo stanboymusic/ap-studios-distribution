@@ -10,6 +10,11 @@ def build_party_list(parent, parties, registry, ns):
         sub(p, "PartyReference", ref, ns=ns)
         sub(p, "PartyName", party.name, ns=ns)
 
-        if party.party_id:
+        # PIE-Ready Identifiers
+        if hasattr(party, 'identifiers') and party.identifiers:
+            for ident in party.identifiers:
+                pid = sub(p, "PartyId", ns=ns)
+                sub(pid, "ProprietaryId", ident.value, Namespace=ident.namespace, ns=ns)
+        elif getattr(party, 'party_id', None):
             pid = sub(p, "PartyId", ns=ns)
             sub(pid, "ProprietaryId", party.party_id, ns=ns)

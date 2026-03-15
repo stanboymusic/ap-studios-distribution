@@ -10,6 +10,7 @@ class Resource(BaseModel):
     file: str
     artists: List[str] = []
     territories: List[str] = []
+    rights: Optional[dict] = None
 
     @field_validator('duration_seconds')
     @classmethod

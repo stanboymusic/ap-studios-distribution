@@ -1,49 +1,45 @@
 import requests
 
-# Endpoints to try
+from app.services.ern_validator_api_client import (
+    ExternalValidatorUnavailable,
+    validate_with_ern_validator_api,
+)
+
+# Public fallback endpoints.
 VALIDATOR_ENDPOINTS = [
     "https://ddex-workbench.org/api/validator/ern",
-    "https://xml-validator.smecde.com/api/validator/ern"
+    "https://xml-validator.smecde.com/api/validator/ern",
 ]
 
-def validate_with_workbench(ern_xml: str, profile: str = "AudioAlbum", version: str = "4.3"):
-    last_error = None
-    
-    for url in VALIDATOR_ENDPOINTS:
-        print(f"DEBUG: Trying Workbench Validator at {url}")
-        try:
-            files = {
-                "file": ("ern.xml", ern_xml, "application/xml")
-            }
-            data = {
-                "profile": profile,
-                "version": version
-            }
-            
-            # Use minimal headers to avoid triggering WAFs or causing redirects
-            response = requests.post(url, files=files, data=data, timeout=20)
-            
-            print(f"DEBUG: Response from {url} status: {response.status_code}")
-            
-            if response.status_code == 200:
-                try:
-                    return response.json()
-                except:
-                    print(f"DEBUG: Response from {url} is not JSON")
-                    if "DDEX Workbench" in response.text:
-                        print(f"DEBUG: Received HTML landing page from {url}")
-            
-            last_error = f"Status {response.status_code} from {url}"
-            if response.status_code == 403:
-                print(f"DEBUG: 403 Forbidden from {url} - might be blocked or require auth")
-                
-        except Exception as e:
-            print(f"DEBUG: Error calling {url}: {str(e)}")
-            last_error = str(e)
 
-    # If all failed, return error
+def validate_with_workbench(ern_xml: str, profile: str = "AudioAlbum", version: str = "4.3"):
+    xml_bytes = ern_xml.encode("utf-8") if isinstance(ern_xml, str) else ern_xml
+
+    # Priority path: self-hosted ddexnet/ern-validator-api.
+    try:
+        return validate_with_ern_validator_api(xml_bytes, profile=profile, version=version)
+    except ExternalValidatorUnavailable as exc:
+        last_error = str(exc)
+    except Exception as exc:
+        last_error = str(exc)
+
+    # Legacy fallback path: public validators.
+    for url in VALIDATOR_ENDPOINTS:
+        try:
+            files = {"file": ("ern.xml", xml_bytes, "application/xml")}
+            data = {"profile": profile, "version": version}
+            response = requests.post(url, files=files, data=data, timeout=20)
+            if response.status_code == 200:
+                payload = response.json()
+                payload["validator_source"] = "public-workbench"
+                return payload
+            last_error = f"Status {response.status_code} from {url}"
+        except Exception as exc:
+            last_error = str(exc)
+
     return {
         "status": "error",
         "message": f"All validators failed. Last error: {last_error}",
-        "raw_response": "Could not get a valid JSON response from any DDEX validator. Check if the services are up or if the XML is too large."
+        "raw_response": "Could not get a valid JSON response from validator API or public fallback services.",
+        "validator_source": "unavailable",
     }

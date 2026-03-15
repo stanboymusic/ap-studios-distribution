@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { WizardContext } from "../app/WizardProvider";
-import axios from "axios";
+import { apiFetch } from "../api/client";
 
 export default function StepRelease({ onNext, onBack }: any) {
   const { state, dispatch } = useContext(WizardContext);
@@ -24,14 +24,18 @@ export default function StepRelease({ onNext, onBack }: any) {
   const save = async () => {
     if (!title || !originalReleaseDate) return alert("Título y fecha de lanzamiento obligatorios");
     try {
-      const response = await axios.post('http://localhost:8000/api/releases/', {
+      const response = await apiFetch<any>('/releases/', {
+        method: "POST",
+        body: JSON.stringify({
         title,
         release_type: releaseType,
         original_release_date: originalReleaseDate,
         language,
-        territories: [territories]
+        territories: [territories],
+        artist_id: state.artist_id
+        }),
       });
-      dispatch({ type: "SET_ID", payload: response.data.release_id });
+      dispatch({ type: "SET_ID", payload: response.release_id });
       dispatch({
         type: "UPDATE_RELEASE",
         payload: {

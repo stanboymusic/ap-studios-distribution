@@ -1,11 +1,13 @@
-from fastapi import APIRouter, UploadFile, File, Form
-from uuid import uuid4
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
+from uuid import UUID, uuid4
 from mutagen import File as MutagenFile
-import io
-import os
-import shutil
-import wave
 import struct
+from datetime import datetime
+from app.core.paths import storage_path
+from app.catalog.catalog_service import create_track as create_catalog_track
+from app.fingerprinting.fingerprint_service import process_audio_fingerprint
+from app.services.catalog_service import CatalogService
+from app.core.auth import ensure_release_access
 
 router = APIRouter(prefix="/tracks", tags=["Tracks"])
 
@@ -51,9 +53,9 @@ def get_wav_duration_manual(file_path):
         print(f"DEBUG: Manual WAV parser error: {e}")
     return None
 
-
 @router.post("/")
 async def create_track(
+    request: Request,
     release_id: str = Form(...),
     title: str = Form(...),
     track_number: int = Form(...),
@@ -61,44 +63,129 @@ async def create_track(
     isrc: str = Form(None),
     audio: UploadFile = File(...)
 ):
+    tenant_id = request.state.tenant_id
+    rid = (release_id or "").strip()
+    try:
+        release_uuid = UUID(rid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid release_id (expected UUID)")
+
+    release = CatalogService.get_release_by_id(release_uuid, tenant_id=tenant_id)
+    if not release:
+        raise HTTPException(status_code=404, detail="Release not found")
+    ensure_release_access(request, release)
+
+    try:
+        track_identity = create_catalog_track(
+            title=title,
+            artist_id=str(release.artist_id) if getattr(release, "artist_id", None) else "",
+            tenant_id=tenant_id,
+            isrc=isrc,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    resolved_isrc = track_identity["isrc"]
+
     # Read audio bytes
     audio_bytes = await audio.read()
 
     # Generate track_id
-    track_id = f"TRK-{uuid4()}"
+    track_uuid = uuid4()
+    track_id = f"TRK-{track_uuid}"
 
-    # Save file to storage first to help mutagen and ensure it's saved
-    os.makedirs("storage/audio", exist_ok=True)
-    file_path = f"storage/audio/{release_id}_{track_id}_{audio.filename}"
+    # Save file to storage
+    directory = storage_path("audio")
+    directory.mkdir(parents=True, exist_ok=True)
+    extension = audio.filename.split('.')[-1] if '.' in audio.filename else 'wav'
+    file_path = directory / f"{track_uuid}.{extension}"
     with open(file_path, "wb") as buffer:
         buffer.write(audio_bytes)
 
-    # Extract duration using mutagen from the saved file
+    # Extract duration
     duration = None
     try:
-        audio_info = MutagenFile(file_path)
+        audio_info = MutagenFile(str(file_path))
         if audio_info and audio_info.info:
             duration = round(audio_info.info.length, 2)
     except Exception as e:
         print(f"DEBUG: Mutagen error: {e}")
 
-    # Fallback for WAV files using wave module
     if duration is None and audio.filename.lower().endswith('.wav'):
-        try:
-            with wave.open(file_path, 'rb') as wav_file:
-                frames = wav_file.getnframes()
-                rate = wav_file.getframerate()
-                duration = round(frames / float(rate), 2)
-        except Exception as e:
-            print(f"DEBUG: Wave module error: {e}")
-            # Final fallback: manual parsing
-            duration = get_wav_duration_manual(file_path)
+        duration = get_wav_duration_manual(str(file_path))
 
     if duration is None:
-        # If mutagen fails, maybe it's a format it doesn't recognize or file is corrupted
-        # For now, let's not block but maybe return a default or log it
-        print(f"WARNING: Unable to read duration for {file_path}")
         duration = 0.0
+
+    try:
+        fingerprint_result = process_audio_fingerprint(
+            source_id=str(track_uuid),
+            source_type="track",
+            file_path=str(file_path),
+            asset_path=str(file_path),
+            tenant_id=tenant_id,
+        )
+    except RuntimeError as exc:
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if fingerprint_result["duplicate"]:
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Duplicate audio detected",
+                "duplicate_of": fingerprint_result["track_id"],
+                "similarity": fingerprint_result["similarity"],
+                "source_type": fingerprint_result["source_type"],
+            },
+        )
+
+    # Save asset metadata
+    asset_data = {
+        "id": str(track_uuid),
+        "type": "audio",
+        "path": str(file_path),
+        "duration": duration,
+        "title": title,
+        "isrc": resolved_isrc,
+        "fingerprint": {
+            "id": fingerprint_result["fingerprint_id"],
+            "hash": fingerprint_result["fingerprint"],
+        },
+        "created_at": datetime.utcnow().isoformat()
+    }
+    CatalogService.save_asset(asset_data, tenant_id=tenant_id)
+    
+    # Update release in catalog
+    track_entry = {
+        "track_id": track_id,
+        "title": title,
+        "track_number": track_number,
+        "duration_seconds": duration,
+        "explicit": explicit,
+        "isrc": resolved_isrc,
+        "file_path": str(file_path),
+        "fingerprint": {
+            "id": fingerprint_result["fingerprint_id"],
+            "hash": fingerprint_result["fingerprint"],
+        },
+    }
+    if not hasattr(release, "tracks"):
+        release.tracks = []
+    release.tracks.append(track_entry)
+    
+    if not hasattr(release, "track_ids"):
+        release.track_ids = []
+    release.track_ids.append(track_uuid)
+    
+    CatalogService.save_release(release, tenant_id=tenant_id)
 
     return {
         "track_id": track_id,
@@ -107,7 +194,11 @@ async def create_track(
         "track_number": track_number,
         "duration_seconds": duration,
         "explicit": explicit,
-        "isrc": isrc,
-        "file_path": file_path,
+        "isrc": resolved_isrc,
+        "fingerprint": {
+            "id": fingerprint_result["fingerprint_id"],
+            "hash": fingerprint_result["fingerprint"],
+        },
+        "file_path": str(file_path),
         "status": "ok"
     }

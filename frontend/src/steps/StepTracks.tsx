@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { WizardContext } from "../app/WizardProvider";
-import axios from "axios";
+import { API_BASE, getApiHeaders } from "../api/client";
 
 export default function StepTracks({ onNext, onBack }: any) {
   const { state, dispatch } = useContext(WizardContext);
@@ -35,25 +35,32 @@ export default function StepTracks({ onNext, onBack }: any) {
 
     try {
       console.log('DEBUG: Adding track...', { title, trackNumber, explicit, file: file.name });
-      const response = await axios.post('http://localhost:8000/api/tracks/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+
+      const res = await fetch(`${API_BASE}/tracks/`, {
+        method: "POST",
+        headers: getApiHeaders(undefined, false),
+        body: formData,
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.detail || "API Error");
+      }
 
-      console.log('DEBUG: Track response:', response.data);
+      console.log('DEBUG: Track response:', data);
 
-      if (response.data.error) {
-        alert("Error del servidor: " + response.data.error);
+      if (data.error) {
+        alert("Error del servidor: " + data.error);
         return;
       }
 
       const newTrack = {
-        track_id: response.data.track_id,
-        title: response.data.title,
-        track_number: response.data.track_number,
-        duration_seconds: response.data.duration_seconds,
-        explicit: response.data.explicit,
-        isrc: response.data.isrc,
-        file_path: response.data.file_path
+        track_id: data.track_id,
+        title: data.title,
+        track_number: data.track_number,
+        duration_seconds: data.duration_seconds,
+        explicit: data.explicit,
+        isrc: data.isrc,
+        file_path: data.file_path
       };
 
       const updatedTracks = [...tracks, newTrack];

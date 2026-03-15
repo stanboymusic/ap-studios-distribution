@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { WizardContext } from '../app/WizardProvider';
 import { DeliveryTimeline } from '../components/DeliveryTimeline';
+import { API_BASE, getApiHeaders } from '../api/client';
 
 export default function StepDelivery({ onBack }: any) {
   const { state } = useContext(WizardContext);
@@ -8,15 +9,18 @@ export default function StepDelivery({ onBack }: any) {
   const [exporting, setExporting] = useState(false);
   const [delivering, setDelivering] = useState(false);
   const [deliveryStatus, setDeliveryStatus] = useState<any>(null);
+  const hasLocalDeliveryState = !!deliveryStatus;
 
   const isValidated = state.validation?.ddex_status === 'validated' || state.validation?.ddex_status === 'external_unavailable';
 
   // Polling de estado de delivery
   useEffect(() => {
-    if (state.delivery?.status && state.delivery.status !== 'not_delivered') {
+    if ((state.delivery?.status && state.delivery.status !== 'not_delivered') || hasLocalDeliveryState) {
       const pollStatus = async () => {
         try {
-          const response = await fetch(`http://localhost:8000/api/delivery/status/${state.id}`);
+          const response = await fetch(`${API_BASE}/delivery/status/${state.id}`, {
+            headers: getApiHeaders(),
+          });
           const status = await response.json();
           setDeliveryStatus(status);
         } catch (error) {
@@ -28,7 +32,7 @@ export default function StepDelivery({ onBack }: any) {
       const interval = setInterval(pollStatus, 5000); // Poll every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [state.id, state.delivery?.status]);
+  }, [state.id, state.delivery?.status, hasLocalDeliveryState]);
 
   const handleExport = async () => {
     if (!isValidated) {
@@ -38,8 +42,9 @@ export default function StepDelivery({ onBack }: any) {
 
     setExporting(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/delivery/${state.id}/export`, {
+      const response = await fetch(`${API_BASE}/delivery/${state.id}/export`, {
         method: 'POST',
+        headers: getApiHeaders(),
       });
       const result = await response.json();
       setExportResult(result);
@@ -67,9 +72,9 @@ export default function StepDelivery({ onBack }: any) {
 
     setDelivering(true);
     try {
-      const response = await fetch('http://localhost:8000/api/delivery/sftp', {
+      const response = await fetch(`${API_BASE}/delivery/queue`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getApiHeaders(),
         body: JSON.stringify({
           release_id: state.id,
           connector_id: 'orchard_sandbox'
@@ -77,9 +82,18 @@ export default function StepDelivery({ onBack }: any) {
       });
       const result = await response.json();
       if (response.ok) {
-        alert('Entrega iniciada al DSP Sandbox');
+        alert('Pipeline de entrega iniciado');
+        setDeliveryStatus({
+          status: 'PROCESSING',
+          release_id: state.id,
+          connector: 'ORCHARD_SANDBOX',
+          issues: [],
+          queue: result.queue,
+        });
         // Trigger status update
-        const statusResponse = await fetch(`http://localhost:8000/api/delivery/status/${state.id}`);
+        const statusResponse = await fetch(`${API_BASE}/delivery/status/${state.id}`, {
+          headers: getApiHeaders(),
+        });
         const status = await statusResponse.json();
         setDeliveryStatus(status);
       } else {
@@ -102,26 +116,26 @@ export default function StepDelivery({ onBack }: any) {
         <h3 className="text-lg font-semibold">Estado de Preparación</h3>
         <div className="space-y-2">
           <div className="flex items-center">
-            <span className="mr-2">✔</span> Pre-validation completada
+            <span className="mr-2 text-xs font-bold">[OK]</span> Pre-validation completada
           </div>
           <div className="flex items-center">
-            <span className="mr-2">✔</span> ERN generado
+            <span className="mr-2 text-xs font-bold">[OK]</span> ERN generado
           </div>
           <div className="flex items-center">
-            <span className="mr-2">{state.validation?.ddex_status === 'validated' ? '✔' : state.validation?.ddex_status === 'external_unavailable' ? '⚠' : '❌'}</span> {state.validation?.ddex_status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'Validación DDEX'}
+            <span className="mr-2 text-xs font-bold">{state.validation?.ddex_status === 'validated' ? '[OK]' : state.validation?.ddex_status === 'external_unavailable' ? '[WARN]' : '[ERROR]'}</span> {state.validation?.ddex_status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'Validación DDEX'}
           </div>
           <div className="flex items-center">
-            <span className="mr-2">✔</span> Assets verificados
+            <span className="mr-2 text-xs font-bold">[OK]</span> Assets verificados
           </div>
         </div>
 
         {isValidated ? (
           <div className="mt-4 text-green-600 font-bold text-xl">
-            🟢 READY FOR DELIVERY
+            READY FOR DELIVERY
           </div>
         ) : (
           <div className="mt-4 text-red-600 font-bold text-xl">
-            🔴 VALIDATION REQUIRED
+            VALIDATION REQUIRED
           </div>
         )}
       </div>
@@ -167,12 +181,12 @@ export default function StepDelivery({ onBack }: any) {
           <h3 className="text-lg font-semibold">Estado de Entrega</h3>
           <div className="border p-4 rounded">
             <div className="flex items-center mb-2">
-              <span className="mr-2">
-                {deliveryStatus.status === 'ACCEPTED' ? '🟢' :
-                 deliveryStatus.status === 'REJECTED' ? '🔴' :
-                 deliveryStatus.status === 'PROCESSING' ? '🟡' :
-                 deliveryStatus.status === 'UPLOADED' ? '🟠' : '⚪'}
-              </span>
+              <div className={`w-3 h-3 rounded-full mr-2 ${
+                deliveryStatus.status === 'ACCEPTED' ? 'bg-green-500' :
+                deliveryStatus.status === 'REJECTED' ? 'bg-red-500' :
+                deliveryStatus.status === 'PROCESSING' ? 'bg-yellow-500' :
+                deliveryStatus.status === 'UPLOADED' ? 'bg-blue-500' : 'bg-gray-400'
+              }`} />
               <strong>Estado:</strong> {deliveryStatus.status}
             </div>
             <p><strong>DSP Destino:</strong> {deliveryStatus.connector || 'DSP Sandbox'}</p>

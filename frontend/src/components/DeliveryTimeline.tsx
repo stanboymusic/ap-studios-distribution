@@ -1,10 +1,11 @@
 import React from 'react';
 import { DeliveryEvent } from '../types';
+import { API_BASE, getApiHeaders } from '../api/client';
 
 async function fetchEvents(releaseId: string): Promise<DeliveryEvent[]> {
-  const res = await fetch(
-    `http://127.0.0.1:8000/api/delivery/events/${releaseId}`
-  );
+  const res = await fetch(`${API_BASE}/delivery/events/${releaseId}`, {
+    headers: getApiHeaders(),
+  });
   return res.json();
 }
 

@@ -1,5 +1,6 @@
 import paramiko
 from typing import Optional
+import socket
 
 
 class SFTPConnector:
@@ -11,11 +12,18 @@ class SFTPConnector:
         self.transport: Optional[paramiko.Transport] = None
         self.sftp: Optional[paramiko.SFTPClient] = None
 
-    def connect(self):
+    def connect(self, timeout_seconds: float = 3.0):
         """Establece la conexión SFTP."""
         try:
-            self.transport = paramiko.Transport((self.host, self.port))
-            self.transport.connect(username=self.username, password=self.password)
+            sock = socket.create_connection((self.host, self.port), timeout=timeout_seconds)
+            sock.settimeout(timeout_seconds)
+            self.transport = paramiko.Transport(sock)
+            # Paramiko can hang on handshake/auth if the server is misconfigured.
+            # Enforce timeouts so delivery fallback can proceed quickly.
+            self.transport.banner_timeout = timeout_seconds
+            self.transport.auth_timeout = timeout_seconds
+            self.transport.start_client(timeout=timeout_seconds)
+            self.transport.auth_password(self.username, self.password, timeout=timeout_seconds)
             self.sftp = paramiko.SFTPClient.from_transport(self.transport)
         except Exception as e:
             raise ConnectionError(f"Error conectando a SFTP: {str(e)}")
@@ -35,3 +43,20 @@ class SFTPConnector:
             self.sftp.close()
         if self.transport:
             self.transport.close()
+
+
+def upload_file(
+    host: str,
+    username: str,
+    password: str,
+    local_file: str,
+    remote_path: str,
+    port: int = 22,
+    timeout_seconds: float = 3.0,
+) -> None:
+    connector = SFTPConnector(host=host, port=port, username=username, password=password)
+    connector.connect(timeout_seconds=timeout_seconds)
+    try:
+        connector.upload(local_file, remote_path)
+    finally:
+        connector.disconnect()

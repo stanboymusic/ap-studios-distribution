@@ -1,0 +1,3 @@
+[submodule "services/ern-validator-api"]
+	path = services/ern-validator-api
+	url = https://github.com/ddexnet/ern-validator-api.git

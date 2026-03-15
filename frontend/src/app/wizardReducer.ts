@@ -6,6 +6,8 @@ export type WizardAction =
   | { type: "UPDATE_RELEASE"; payload: any }
   | { type: "UPDATE_ERN"; payload: any }
   | { type: "UPDATE_TRACKS"; payload: any[] }
+  | { type: "UPDATE_RIGHTS"; payload: any }
+  | { type: "UPDATE_VALIDATION"; payload: any }
   | { type: "SET_STATUS"; payload: any }
   | { type: "SET_ID"; payload: string };
 
@@ -15,13 +17,19 @@ export function wizardReducer(state: ReleaseDraft, action: WizardAction) {
     case "INIT":
       return action.payload;
     case "UPDATE_ARTIST":
-      return { ...state, artist: action.payload };
+      return { 
+        ...state, 
+        artist_id: action.payload.artist_id,
+        artist: { ...state.artist, ...action.payload } 
+      };
     case "UPDATE_RELEASE":
       return { ...state, release: { ...state.release, ...action.payload } };
     case "UPDATE_ERN":
       return { ...state, ern: action.payload };
     case "UPDATE_TRACKS":
       return { ...state, tracks: action.payload };
+    case "UPDATE_RIGHTS":
+      return { ...state, rights: action.payload };
     case "UPDATE_VALIDATION":
       return { ...state, validation: action.payload };
     case "SET_STATUS":

@@ -30,6 +30,7 @@ export interface ReleaseDraft {
     release_profile: "SimpleAudioSingle";
     message_type: "NewReleaseMessage";
   };
+  artist_id?: string;
   artist?: {
     display_name: string;
     country: string;
@@ -40,11 +41,31 @@ export interface ReleaseDraft {
     title: { text: string; language: string };
     parental_advisory: "None" | "Explicit" | "Clean";
     genres: { primary: string; secondary?: string };
+    original_release_date?: string;
+    upc?: string;
   };
   tracks?: any[];
   artwork?: any;
   deals?: any;
   validation?: any;
+  rights?: RightsDraft;
+}
+
+export interface RightsShare {
+  partyReference: string;
+  rightsType: string;
+  usageTypes: string[];
+  territories: string[];
+  sharePercentage: number;
+  validFrom: string;
+  validTo?: string;
+}
+
+export interface RightsDraft {
+  scope: "release" | "track";
+  releaseId: string;
+  trackId?: string;
+  shares: RightsShare[];
 }
 
 export interface DeliveryEvent {

@@ -1,8 +1,9 @@
 import { useState, useContext } from 'react';
 import { WizardContext } from '../app/WizardProvider';
+import { API_BASE, getApiHeaders } from '../api/client';
 
 export default function StepArtwork({ onNext, onBack }: any) {
-  const { dispatch } = useContext(WizardContext);
+  const { state, dispatch } = useContext(WizardContext);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
@@ -21,14 +22,21 @@ export default function StepArtwork({ onNext, onBack }: any) {
     formData.append('cover', file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/assets/cover', {
+      const response = await fetch(`${API_BASE}/assets/cover`, {
         method: 'POST',
+        headers: getApiHeaders(undefined, false),
         body: formData,
       });
       const result = await response.json();
       setUploadResult(result);
       if (result.status === 'ok') {
-        dispatch({ type: "UPDATE_RELEASE", payload: { artwork: result } });
+        dispatch({ type: "UPDATE_RELEASE", payload: { artwork: result, artwork_id: result.id } });
+        // Update release in backend
+        await fetch(`${API_BASE}/releases/${state.id}`, {
+          method: 'PUT',
+          headers: getApiHeaders(),
+          body: JSON.stringify({ artwork_id: result.id })
+        });
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -64,14 +72,14 @@ export default function StepArtwork({ onNext, onBack }: any) {
         )}
 
         {uploadResult && uploadResult.status === 'ok' && (
-          <div className="mt-2 text-green-600">
-            ✔ {uploadResult.width}x{uploadResult.height} {uploadResult.format}
+          <div className="mt-2 text-green-600 font-bold">
+            [OK] {uploadResult.width}x{uploadResult.height} {uploadResult.format}
           </div>
         )}
 
         {uploadResult && uploadResult.detail && (
-          <div className="mt-2 text-red-600">
-            ❌ {uploadResult.detail}
+          <div className="mt-2 text-red-600 font-bold">
+            [ERROR] {uploadResult.detail}
           </div>
         )}
       </div>

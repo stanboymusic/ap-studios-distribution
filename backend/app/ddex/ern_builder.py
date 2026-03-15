@@ -7,6 +7,9 @@ from app.ddex.ern.deal_builder import build_deal_list
 from app.ern.builder.json_parser import ErnJsonParser
 
 
+from app.services.catalog_service import CatalogService
+from uuid import UUID
+
 def build_ern(release):
     # Ensure release_data is a dictionary for the builders
     if not isinstance(release, dict):
@@ -17,12 +20,19 @@ def build_ern(release):
         else:
             title_text = str(title_attr)
 
-        # Safely extract artist name
-        artist_attr = getattr(release, 'artist', None)
-        if isinstance(artist_attr, dict):
-            artist_name = artist_attr.get('display_name', 'Unknown Artist')
-        else:
-            artist_name = str(artist_attr) if artist_attr else "Unknown Artist"
+        # Get artist name from catalog if artist_id exists
+        artist_name = "Unknown Artist"
+        artist_id = getattr(release, 'artist_id', None)
+        if artist_id:
+            artist = CatalogService.get_artist_by_id(artist_id if isinstance(artist_id, UUID) else UUID(artist_id))
+            if artist:
+                artist_name = artist.name
+        elif hasattr(release, 'artist') and release.artist:
+            # Fallback to legacy artist object/name
+            if isinstance(release.artist, dict):
+                artist_name = release.artist.get('display_name', 'Unknown Artist')
+            else:
+                artist_name = str(release.artist)
 
         release_data = {
             "title": {"text": title_text},
@@ -33,6 +43,12 @@ def build_ern(release):
         }
     else:
         release_data = release
+        # Even if it's a dict, try to resolve artist_name from catalog if artist_id is present
+        if "artist_id" in release_data and release_data["artist_id"]:
+            artist = CatalogService.get_artist_by_id(UUID(release_data["artist_id"]))
+            if artist:
+                if "artist" not in release_data: release_data["artist"] = {}
+                release_data["artist"]["display_name"] = artist.name
 
     tracks = release_data.get("tracks", [])
     cover_filename = release_data.get("artwork")

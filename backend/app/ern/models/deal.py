@@ -1,13 +1,13 @@
 from pydantic import BaseModel
-from typing import List
-
-class CommercialModel(BaseModel):
-    model: str
-    use_type: str
+from typing import List, Optional
 
 class Deal(BaseModel):
-    internal_id: str
-    release: str
-    territories: List[str]
-    start_date: str
-    commercial_models: List[CommercialModel]
+    deal_reference: str
+    party_reference: str
+    commercial_model: str
+    use_types: List[str]
+    territory_codes: List[str]
+    valid_from: str
+    valid_to: Optional[str] = None
+    release_reference: str
+    track_references: List[str] = []

@@ -21,6 +21,51 @@ import paramiko
 from paramiko import ServerInterface, SFTPServerInterface, SFTPServer
 from paramiko.common import AUTH_SUCCESSFUL, AUTH_FAILED, OPEN_SUCCEEDED, OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
+# Implementación básica de la interfaz SFTP
+class SandboxSFTPServerInterface(SFTPServerInterface):
+    def __init__(self, server, root_dir):
+        self.root_dir = Path(root_dir).resolve()
+
+    def _full_path(self, path):
+        path = path.replace("\\", "/")
+        while path.startswith("/"):
+            path = path[1:]
+        return str((self.root_dir / path).resolve())
+
+    def list_folder(self, path):
+        full_path = self._full_path(path)
+        try:
+            items = []
+            for name in os.listdir(full_path):
+                st = os.stat(os.path.join(full_path, name))
+                items.append(paramiko.SFTPAttributes.from_stat(st, name))
+            return items
+        except Exception:
+            return paramiko.SFT_NO_SUCH_FILE
+
+    def stat(self, path):
+        full_path = self._full_path(path)
+        try:
+            st = os.stat(full_path)
+            return paramiko.SFTPAttributes.from_stat(st)
+        except Exception:
+            return paramiko.SFT_NO_SUCH_FILE
+
+    def open(self, path, flags, attr):
+        full_path = self._full_path(path)
+        try:
+            if os.path.isdir(full_path):
+                return paramiko.SFT_PERMISSION_DENIED
+            return paramiko.SFTPHandle(flags)
+        except Exception:
+            return paramiko.SFT_PERMISSION_DENIED
+
+    def lstat(self, path):
+        return self.stat(path)
+
+    def realpath(self, path):
+        return "/" + path.lstrip("/")
+
 # Import delivery logger
 sys.path.append('./backend')
 try:
@@ -58,6 +103,9 @@ class DummyServer(ServerInterface):
             return True
         return False
 
+    def get_banner(self):
+        return ("Welcome to AP Studios SFTP Sandbox\r\n", "en-US")
+
 
 class SandboxSFTPServer:
     def __init__(self, root_dir: str = "./sandbox-dsp", port: int = 2222):
@@ -80,10 +128,11 @@ class SandboxSFTPServer:
         """Inicia el servidor SFTP."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("localhost", self.port))
+        # Usar 127.0.0.1 explícitamente es más estable en Windows que 'localhost'
+        sock.bind(("127.0.0.1", self.port))
         sock.listen(100)
 
-        print(f"DSP Sandbox SFTP server started on port {self.port}")
+        print(f"DSP Sandbox SFTP server started on 127.0.0.1:{self.port}")
         print(f"Root directory: {self.root_dir}")
 
         # Generar llave una sola vez para evitar lentitud
@@ -113,40 +162,37 @@ class SandboxSFTPServer:
         """Maneja el handshake inicial y el servidor SFTP."""
         transport = None
         try:
+            # Aumentar timeout para el inicio (handshake)
+            client_sock.settimeout(60)
             transport = paramiko.Transport(client_sock)
+            
+            # Configuraciones críticas para Windows y FileZilla
+            transport.banner_timeout = 60
+            
+            transport.set_subsystem_handler(
+                'sftp', 
+                SFTPServer, 
+                SandboxSFTPServerInterface, 
+                str(self.root_dir)
+            )
+            
             transport.add_server_key(server_key)
-
             server = DummyServer()
-            try:
-                transport.start_server(server=server)
-            except paramiko.SSHException:
-                print("SSH negotiation failed.")
-                return
+            transport.start_server(server=server)
 
-            channel = transport.accept(20)
-            if channel is None:
-                print("No channel requested.")
-                return
+            # MUY IMPORTANTE: Una vez negociado el SSH, quitamos el timeout
+            # para que FileZilla pueda mantener la sesión abierta sin tráfico
+            client_sock.settimeout(None)
 
-            print("Waiting for subsystem request...")
-            server.event.wait(10)
-            if channel.active:
-                print("Starting SFTP subsystem...")
-                # SFTPServer in paramiko handles the subsystem on the channel
-                # We need to keep the transport alive while the channel is active
-                sftp_server = SFTPServer(channel, str(self.root_dir), server)
+            while transport.is_active():
+                time.sleep(1)
                 
-                while channel.active:
-                    time.sleep(0.5)
-                
-                print("SFTP session closed by client.")
-            else:
-                print("Channel not active.")
+            print("Connection closed.")
         except Exception as e:
-            print(f"Error handling connection: {e}")
+            if "10054" not in str(e):
+                print(f"Error handling connection: {e}")
         finally:
             if transport:
-                print("Closing transport.")
                 transport.close()
 
     def handle_client(self, transport):
@@ -176,6 +222,13 @@ class SandboxSFTPServer:
         processing_dir.mkdir(exist_ok=True)
 
         print(f"Processing delivery: {release_id}")
+
+        # Append sandbox log
+        try:
+            with (self.logs_dir / f"release-{release_id_str}.log").open("a", encoding="utf-8") as f:
+                f.write(f"[{datetime.utcnow().isoformat()}Z] Processing started: {zip_path.name}\n")
+        except Exception:
+            pass
 
         # Log processing start
         log_event(
@@ -224,6 +277,11 @@ class SandboxSFTPServer:
                 event_type=status,  # ACCEPTED or REJECTED
                 message=f"DSP {status.lower()}: {issues}" if issues else f"DSP {status.lower()}"
             )
+            try:
+                with (self.logs_dir / f"release-{release_id_str}.log").open("a", encoding="utf-8") as f:
+                    f.write(f"[{datetime.utcnow().isoformat()}Z] Final status: {status} {issues}\n")
+            except Exception:
+                pass
 
             print(f"Delivery {release_id} {status.lower()}")
 
@@ -250,6 +308,11 @@ class SandboxSFTPServer:
                 event_type="ERROR",
                 message=f"DSP processing error: {str(e)}"
             )
+            try:
+                with (self.logs_dir / f"release-{release_id_str}.log").open("a", encoding="utf-8") as f:
+                    f.write(f"[{datetime.utcnow().isoformat()}Z] ERROR: {str(e)}\n")
+            except Exception:
+                pass
 
     def validate_delivery(self, delivery_dir: Path) -> tuple[str, list]:
         """Valida la entrega. Retorna (status, issues)."""

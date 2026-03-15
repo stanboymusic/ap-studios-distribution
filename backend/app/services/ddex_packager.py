@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 import tempfile
 import os
+from app.core.paths import storage_path
 
 def sha256(file_path: Path) -> str:
     """Calcula el hash SHA256 de un archivo."""
@@ -59,7 +60,7 @@ def build_delivery_zip(release_id: str, ern_xml_content: str, assets: List[Asset
         checksums_path.write_text("\n".join(checksums))
 
         # Crear ZIP en la carpeta de deliveries
-        delivery_dir = Path("storage/deliveries")
+        delivery_dir = storage_path("deliveries")
         delivery_dir.mkdir(parents=True, exist_ok=True)
         
         zip_path = delivery_dir / f"delivery_{release_id}.zip"

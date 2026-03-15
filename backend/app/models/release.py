@@ -1,12 +1,12 @@
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 
 class ReleaseDraft:
     def __init__(self):
         self.id: UUID = uuid4()
         self.release_id: UUID = self.id
-        self.status: str = "draft"
+        self.status: str = "CREATED"
         self.created_at: str = datetime.utcnow().isoformat()
         self.updated_at: str = datetime.utcnow().isoformat()
         self.owner_party = {
@@ -19,11 +19,10 @@ class ReleaseDraft:
             "release_profile": "SimpleAudioSingle",
             "message_type": "NewReleaseMessage"
         }
-        self.artist = None
-        self.release = None
-        self.tracks: List = []
-        self.artwork = None
-        self.deals = None
+        self.artist_id: Optional[UUID] = None
+        self.owner_user_id: Optional[str] = None
+        self.artwork_id: Optional[UUID] = None
+        self.track_ids: List[UUID] = []
         self.title = None
         self.release_type = None
         self.original_release_date = None
@@ -37,7 +36,8 @@ class ReleaseDraft:
             "last_validated_at": None,
             "ddex_status": "not_validated",
             "errors": [],
-            "warnings": []
+            "warnings": [],
+            "history": []
         }
         self.delivery = {
             "status": "not_delivered",  # not_delivered, uploading, uploaded, processing, accepted, rejected
@@ -46,3 +46,37 @@ class ReleaseDraft:
             "dsp_status": None,
             "dsp_issues": []
         }
+
+    def to_dict(self):
+        data = self.__dict__.copy()
+        data["id"] = str(self.id)
+        data["release_id"] = str(self.release_id)
+        if self.artist_id:
+            data["artist_id"] = str(self.artist_id)
+        if self.owner_user_id:
+            data["owner_user_id"] = self.owner_user_id
+        if self.artwork_id:
+            data["artwork_id"] = str(self.artwork_id)
+        data["track_ids"] = [str(tid) for tid in self.track_ids]
+        
+        if hasattr(self.release_type, "value"):
+            data["release_type"] = self.release_type.value
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        instance = cls()
+        for key, value in data.items():
+            if key in ["id", "release_id", "artist_id", "artwork_id"]:
+                if value:
+                    setattr(instance, key, UUID(value))
+            elif key == "track_ids":
+                setattr(instance, key, [UUID(tid) for tid in value])
+            elif key == "original_release_date" and value:
+                if isinstance(value, str):
+                    setattr(instance, key, date.fromisoformat(value))
+                else:
+                    setattr(instance, key, value)
+            else:
+                setattr(instance, key, value)
+        return instance

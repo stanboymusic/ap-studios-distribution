@@ -2,17 +2,18 @@ import hashlib
 import json
 from pathlib import Path
 from datetime import datetime
+from app.core.paths import storage_path
 
 
 class ErnStore:
 
-    def __init__(self, base_path="storage/ern/releases"):
-        self.base = Path(base_path)
+    def __init__(self, base_path: str | Path | None = None):
+        self.base = Path(base_path) if base_path is not None else storage_path("ern", "releases")
 
     def _hash(self, data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
 
-    def save(self, release_id: str, xml: bytes, context, validation_results=None) -> dict:
+    def save(self, release_id: str, xml: bytes, context, validation_results=None, extra_meta: dict | None = None) -> dict:
         release_dir = self.base / release_id
         release_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,6 +42,8 @@ class ErnStore:
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "validation": validation_results
         }
+        if extra_meta:
+            meta.update(extra_meta)
 
         (vdir / "meta.json").write_text(json.dumps(meta, indent=2))
 
