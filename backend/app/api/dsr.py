@@ -1,13 +1,19 @@
 from fastapi import APIRouter, HTTPException, Request
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 from decimal import Decimal
 from datetime import date, datetime
+import os
+import tempfile
+import shutil
 from uuid import UUID
 from app.models.dsr import SaleEvent, RevenueLineItem, Statement
 from app.services.revenue_engine import calculate_payouts, build_statement
 from app.services.rights_store import RightsStore
 from app.services.dsr_store import DsrStore
 from app.services.analytics_store import AnalyticsEvent, AnalyticsStore
+from app.services.dsrf_validator import dsrf_validator
+from app.services.dsr_parser import parse_dsrf_file, DSRFParseError
+from app.services.dsr_history_store import DSRHistoryStore
 from app.automation.engine import AutomationEngine
 from app.automation.events import AutomationEvent
 
@@ -16,15 +22,22 @@ router = APIRouter(prefix="/dsr", tags=["DSR"])
 def _tenant_id(request: Request) -> str:
     return getattr(request.state, "tenant_id", None) or "default"
 
-@router.post("/ingest")
-def ingest_sales_report(sales: List[Dict], request: Request):
-    """
-    Ingesta un reporte normalizado (lista de items) y genera ledger persistente.
-    """
-    tenant_id = _tenant_id(request)
+
+def _parse_date(value: Any) -> Optional[date]:
+    if isinstance(value, date):
+        return value
+    if not value:
+        return None
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def _ingest_sales_report_payload(sales: List[Dict], tenant_id: str) -> dict:
     new_events = []
     new_line_items = []
-    
+
     rights_configs = RightsStore.list_configurations(tenant_id)
     for s in sales:
         event = SaleEvent(
@@ -37,34 +50,30 @@ def ingest_sales_report(sales: List[Dict], request: Request):
             gross_amount=Decimal(str(s["gross_amount"])),
             currency=s["currency"],
             period_start=s["period_start"],
-            period_end=s["period_end"]
+            period_end=s["period_end"],
         )
         new_events.append(event)
-        
-        # Resolve splits for this sale
+
         applicable_shares = []
         for config in rights_configs:
             if str(config.release_id) == event.release_ref:
-                # Basic matching logic: check scope and track_id
                 if config.scope == "release" and not event.track_ref:
                     applicable_shares = config.shares
                     break
-                elif config.scope == "track" and event.track_ref and str(config.track_id) == event.track_ref:
+                if config.scope == "track" and event.track_ref and str(config.track_id) == event.track_ref:
                     applicable_shares = config.shares
                     break
-        
+
         if not applicable_shares:
-            # Fallback to any release-level config if specific track not found
             for config in rights_configs:
                 if str(config.release_id) == event.release_ref and config.scope == "release":
                     applicable_shares = config.shares
                     break
-        
+
         if applicable_shares:
             try:
                 items = calculate_payouts(event, applicable_shares)
                 new_line_items.extend(items)
-                # Emit analytics for revenue (by line item)
                 for li in items:
                     AnalyticsStore.append_event(
                         AnalyticsEvent.create(
@@ -90,10 +99,9 @@ def ingest_sales_report(sales: List[Dict], request: Request):
                         )
                     except Exception:
                         pass
-            except ValueError as e:
-                # In real life: mark as unallocated
+            except ValueError:
                 pass
-                 
+
     DsrStore.append_sales(new_events, tenant_id=tenant_id)
     DsrStore.append_line_items(new_line_items, tenant_id=tenant_id)
     try:
@@ -111,8 +119,131 @@ def ingest_sales_report(sales: List[Dict], request: Request):
     return {
         "status": "processed",
         "events_ingested": len(new_events),
-        "line_items_generated": len(new_line_items)
+        "line_items_generated": len(new_line_items),
     }
+
+
+def _ingest_dsrf_records(records: List[Dict[str, Any]], tenant_id: str) -> None:
+    for record in records:
+        revenue = Decimal(str(record.get("revenue") or "0"))
+        currency = record.get("currency") or "USD"
+        dsp = record.get("dsp_name") or "unknown"
+        territory = record.get("territory") or "unknown"
+        release_id = record.get("upc")
+        track_id = record.get("isrc")
+
+        AnalyticsStore.append_event(
+            AnalyticsEvent.create(
+                event_type="revenue",
+                dsp=dsp,
+                territory=territory,
+                amount=revenue,
+                currency=currency,
+                release_id=release_id,
+                track_id=track_id,
+                artist_id=None,
+            ),
+            tenant_id=tenant_id,
+        )
+
+        day = _parse_date(record.get("period_end")) or date.today()
+        try:
+            AnalyticsStore.add_daily_revenue(
+                day=day,
+                dsp=dsp,
+                territory=territory,
+                amount=revenue,
+                currency=currency,
+                tenant_id=tenant_id,
+            )
+        except Exception:
+            pass
+
+@router.post("/ingest")
+async def ingest_sales_report(request: Request):
+    """
+    Ingesta:
+    - JSON normalizado (lista de items) para ledger/payouts.
+    - Archivo DSRF TSV (multipart/form-data, campo "file") para analytics.
+    """
+    tenant_id = _tenant_id(request)
+    content_type = (request.headers.get("content-type") or "").lower()
+
+    if content_type.startswith("multipart/form-data"):
+        form = await request.form()
+        file = form.get("file")
+        if not file:
+            raise HTTPException(status_code=400, detail="Missing file in form-data")
+
+        tmp_path = None
+        try:
+            suffix = os.path.splitext(getattr(file, "filename", "") or "report.tsv")[1] or ".tsv"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode="wb") as tmp:
+                shutil.copyfileobj(file.file, tmp)
+                tmp_path = tmp.name
+
+            validation = dsrf_validator.validate(tmp_path)
+            if not validation["valid"]:
+                DSRHistoryStore.record(
+                    tenant_id=tenant_id,
+                    filename=getattr(file, "filename", None),
+                    status="rejected",
+                    dsrf_version=validation.get("version"),
+                    errors=validation.get("errors"),
+                    warnings=validation.get("warnings"),
+                    row_count=validation.get("row_count"),
+                )
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": "DSRF file failed validation",
+                        "dsrf_version": validation.get("version"),
+                        "errors": validation.get("errors"),
+                        "warnings": validation.get("warnings"),
+                    },
+                )
+
+            parsed = parse_dsrf_file(tmp_path, version=validation.get("version") or "unknown")
+            _ingest_dsrf_records(parsed["records"], tenant_id=tenant_id)
+            DSRHistoryStore.record(
+                tenant_id=tenant_id,
+                filename=getattr(file, "filename", None),
+                status="accepted",
+                dsrf_version=validation.get("version"),
+                warnings=validation.get("warnings"),
+                summary=parsed.get("summary"),
+                row_count=parsed.get("raw_row_count"),
+            )
+
+            return {
+                "status": "ok",
+                "dsrf_version": validation.get("version"),
+                "filename": getattr(file, "filename", None),
+                "rows_processed": len(parsed["records"]),
+                "raw_row_count": parsed["raw_row_count"],
+                "summary": parsed["summary"],
+                "warnings": validation.get("warnings"),
+            }
+        except HTTPException:
+            raise
+        except DSRFParseError as exc:
+            raise HTTPException(status_code=422, detail={"message": f"Parse error: {exc}"}) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail={"message": f"Internal error during DSR ingestion: {exc}"},
+            ) from exc
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+    sales = await request.json()
+    if not isinstance(sales, list):
+        raise HTTPException(status_code=400, detail="Expected JSON list of sales items")
+    return _ingest_sales_report_payload(sales, tenant_id)
 
 @router.get("/statements/{party_reference}")
 def get_party_statement(party_reference: str, request: Request):

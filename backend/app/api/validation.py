@@ -219,7 +219,7 @@ async def external_validate(
                 version=version,
                 tenant_id=tenant_id,
             )
-        return validate_with_ern_validator_api(content, profile=profile, version=version)
+        return await validate_with_ern_validator_api(content, profile=profile, version=version)
     except ExternalValidatorUnavailable as exc:
         raise HTTPException(status_code=502, detail=f"Validator unavailable: {exc}") from exc
 

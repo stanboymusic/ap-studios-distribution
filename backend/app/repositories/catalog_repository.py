@@ -11,6 +11,8 @@ from typing import Callable, TypeVar
 
 from app.core.paths import storage_path, tenant_path
 from app.models.identifiers import IdentifierState
+from app.models.release import ReleaseDraft
+from app.services.catalog_service import CatalogService
 
 try:
     from redis import Redis
@@ -198,6 +200,44 @@ def is_isrc_reserved(tenant_id: str, isrc: str) -> bool:
 
     state = _load_state(_state_file(scope))
     return value in state.reserved_isrc
+
+
+def is_upc_reserved(tenant_id: str, upc: str) -> bool:
+    scope = _scope_id(tenant_id)
+    value = (upc or "").strip()
+    redis_client = _get_redis()
+    if redis_client is not None:
+        return bool(redis_client.exists(f"ident:{scope}:upc:reserved:{value}"))
+
+    state = _load_state(_state_file(scope))
+    return value in state.reserved_upc
+
+
+def create_release(tenant_id: str, release: ReleaseDraft) -> ReleaseDraft:
+    CatalogService.save_release(release, tenant_id=tenant_id)
+    return release
+
+
+def delete_release(tenant_id: str, release_id: str) -> bool:
+    files = CatalogService._files(tenant_id)
+    releases = CatalogService._load_json(files["releases"], tenant_id)
+    before = len(releases)
+    releases = [r for r in releases if str(r.get("id")) != str(release_id)]
+    if len(releases) == before:
+        return False
+    CatalogService._save_json(files["releases"], releases, tenant_id)
+    return True
+
+
+def create_track(tenant_id: str, release_id: str, track_data: dict) -> dict:
+    release = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
+    if not release:
+        raise ValueError("Release not found")
+    if not hasattr(release, "tracks") or release.tracks is None:
+        release.tracks = []
+    release.tracks.append(track_data)
+    CatalogService.save_release(release, tenant_id=tenant_id)
+    return track_data
 
 
 def is_upc_reserved(tenant_id: str, upc: str) -> bool:

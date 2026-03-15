@@ -1,13 +1,81 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
-from typing import Any, Dict, List
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-import requests
+import httpx
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
 
 class ExternalValidatorUnavailable(Exception):
     pass
+
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CircuitBreakerState:
+    """
+    Simple circuit breaker for ERN validator client.
+    """
+
+    failure_count: int = 0
+    last_failure_time: Optional[float] = None
+    state: str = "CLOSED"  # CLOSED | OPEN | HALF_OPEN
+    failure_threshold: int = 5
+    recovery_timeout: float = 60.0
+
+    def record_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if self.failure_count >= self.failure_threshold:
+            self.state = "OPEN"
+            logger.error(
+                "ERN validator circuit breaker OPEN after %s failures",
+                self.failure_count,
+            )
+
+    def record_success(self):
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = "CLOSED"
+
+    def is_open(self) -> bool:
+        if self.state == "CLOSED":
+            return False
+        if self.state == "OPEN":
+            elapsed = time.time() - (self.last_failure_time or 0)
+            if elapsed >= self.recovery_timeout:
+                self.state = "HALF_OPEN"
+                logger.info("ERN validator circuit breaker → HALF_OPEN, testing...")
+                return False
+            return True
+        return False  # HALF_OPEN: allow probe
+
+
+_circuit_breaker = CircuitBreakerState()
+
+
+@retry(
+    retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True,
+)
+async def _post_to_validator(client: httpx.AsyncClient, url: str, **kwargs) -> httpx.Response:
+    return await client.post(url, **kwargs)
 
 
 def _candidate_urls() -> List[str]:
@@ -158,7 +226,7 @@ def _normalize_java_validator_payload(payload: List[Any]) -> Dict[str, Any]:
     }
 
 
-def validate_with_ern_validator_api(
+async def _do_validate_with_ern_validator_api(
     xml_bytes: bytes,
     profile: str = "AudioAlbum",
     version: str = "4.3",
@@ -167,57 +235,117 @@ def validate_with_ern_validator_api(
     last_error: str | None = None
     schema_id = _schema_version_id(version)
     profile_id = _release_profile_id(schema_id, profile)
+    timeout = httpx.Timeout(timeout_seconds)
 
-    for url in _candidate_urls():
-        try:
-            if url.endswith("/api/json/validate") or url.endswith("/json/validate"):
-                data = {"messageSchemaVersionId": schema_id}
-                if profile_id:
-                    data["releaseProfileVersionId"] = profile_id
-                response = requests.post(
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for url in _candidate_urls():
+            try:
+                if url.endswith("/api/json/validate") or url.endswith("/json/validate"):
+                    data = {"messageSchemaVersionId": schema_id}
+                    if profile_id:
+                        data["releaseProfileVersionId"] = profile_id
+                    response = await _post_to_validator(
+                        client,
+                        url,
+                        files={"messageFile": ("ern.xml", xml_bytes, "application/xml")},
+                        data=data,
+                    )
+                    if response.status_code in {200, 400, 422}:
+                        try:
+                            payload = response.json()
+                        except ValueError:
+                            payload = {"messages": [response.text]}
+                        if isinstance(payload, list):
+                            return _normalize_java_validator_payload(payload)
+                        if isinstance(payload, dict):
+                            return _normalize_payload(payload)
+                        return _normalize_payload({"messages": [str(payload)]})
+
+                # Attempt 1: raw XML body.
+                response = await _post_to_validator(
+                    client,
                     url,
-                    files={"messageFile": ("ern.xml", xml_bytes, "application/xml")},
-                    data=data,
-                    timeout=timeout_seconds,
+                    data=xml_bytes,
+                    headers={
+                        "Content-Type": "application/xml",
+                        "X-DDEX-Profile": profile,
+                        "X-DDEX-Version": version,
+                    },
                 )
                 if response.status_code in {200, 400, 422}:
-                    payload = response.json()
-                    if isinstance(payload, list):
-                        return _normalize_java_validator_payload(payload)
-                    if isinstance(payload, dict):
-                        return _normalize_payload(payload)
-                    return _normalize_payload({"messages": [str(payload)]})
+                    try:
+                        payload = response.json()
+                    except ValueError:
+                        payload = {"messages": [response.text]}
+                    return _normalize_payload(payload if isinstance(payload, dict) else {"messages": [payload]})
 
-            # Attempt 1: raw XML body.
-            response = requests.post(
-                url,
-                data=xml_bytes,
-                headers={
-                    "Content-Type": "application/xml",
-                    "X-DDEX-Profile": profile,
-                    "X-DDEX-Version": version,
-                },
-                timeout=timeout_seconds,
-            )
-            if response.status_code in {200, 400, 422}:
-                payload = response.json()
-                return _normalize_payload(payload if isinstance(payload, dict) else {"messages": [payload]})
+                # Attempt 2: multipart upload (some validator APIs expect file form data).
+                response = await _post_to_validator(
+                    client,
+                    url,
+                    files={"file": ("ern.xml", xml_bytes, "application/xml")},
+                    data={"profile": profile, "version": version},
+                )
+                if response.status_code in {200, 400, 422}:
+                    try:
+                        payload = response.json()
+                    except ValueError:
+                        payload = {"messages": [response.text]}
+                    return _normalize_payload(payload if isinstance(payload, dict) else {"messages": [payload]})
 
-            # Attempt 2: multipart upload (some validator APIs expect file form data).
-            response = requests.post(
-                url,
-                files={"file": ("ern.xml", xml_bytes, "application/xml")},
-                data={"profile": profile, "version": version},
-                timeout=timeout_seconds,
-            )
-            if response.status_code in {200, 400, 422}:
-                payload = response.json()
-                return _normalize_payload(payload if isinstance(payload, dict) else {"messages": [payload]})
-
-            last_error = f"{url} returned HTTP {response.status_code}"
-        except requests.RequestException as exc:
-            last_error = f"{url} request failed: {exc}"
-        except ValueError:
-            last_error = f"{url} returned non-JSON response"
+                last_error = f"{url} returned HTTP {response.status_code}"
+            except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                logger.warning("Validator URL %s unreachable after retries: %s", url, exc)
+                last_error = f"{url} request failed: {exc}"
+            except ValueError:
+                last_error = f"{url} returned non-JSON response"
+            except Exception as exc:
+                last_error = f"{url} unexpected error: {exc}"
 
     raise ExternalValidatorUnavailable(last_error or "Validator API unavailable")
+
+
+async def validate_with_ern_validator_api(
+    xml_bytes: bytes,
+    profile: str = "AudioAlbum",
+    version: str = "4.3",
+    timeout_seconds: float = 30.0,
+) -> Dict[str, Any]:
+    if _circuit_breaker.is_open():
+        raise ExternalValidatorUnavailable(
+            f"ERN validator circuit breaker is OPEN — skipping call. "
+            f"Will retry after {_circuit_breaker.recovery_timeout}s."
+        )
+
+    try:
+        result = await _do_validate_with_ern_validator_api(
+            xml_bytes,
+            profile=profile,
+            version=version,
+            timeout_seconds=timeout_seconds,
+        )
+        _circuit_breaker.record_success()
+        return result
+    except ExternalValidatorUnavailable:
+        _circuit_breaker.record_failure()
+        raise
+
+
+def validate_with_ern_validator_api_sync(
+    xml_bytes: bytes,
+    profile: str = "AudioAlbum",
+    version: str = "4.3",
+    timeout_seconds: float = 30.0,
+) -> Dict[str, Any]:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(
+            validate_with_ern_validator_api(
+                xml_bytes,
+                profile=profile,
+                version=version,
+                timeout_seconds=timeout_seconds,
+            )
+        )
+    raise RuntimeError("validate_with_ern_validator_api_sync must not be called from an active event loop")

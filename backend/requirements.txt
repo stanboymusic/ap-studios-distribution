@@ -25,6 +25,18 @@ signxml==4.4.0
 cryptography==44.0.3
 celery==5.5.3
 redis==6.0.0
+six==1.16.0
 numpy==2.4.2
 scipy==1.17.1
 librosa==0.11.0
+# ddexdsrf — validador oficial DSRF de ddexnet
+# Instalación manual requerida (la versión 1.1.0d en el repo tiene
+# metadata inválida que rompe pip):
+#   pip install git+https://github.com/ddexnet/dsrf.git
+# Cuando DDEX publique versión estable en PyPI:
+#   pip install ddexdsrf
+# El sistema funciona sin esta librería usando el fallback básico
+# en backend/app/services/dsrf_validator.py (_basic_validate).
+# ddexdsrf  ← comentado intencionalmente
+httpx>=0.27.0
+tenacity>=8.2.0

@@ -2,7 +2,7 @@ import requests
 
 from app.services.ern_validator_api_client import (
     ExternalValidatorUnavailable,
-    validate_with_ern_validator_api,
+    validate_with_ern_validator_api_sync,
 )
 
 # Public fallback endpoints.
@@ -17,7 +17,7 @@ def validate_with_workbench(ern_xml: str, profile: str = "AudioAlbum", version: 
 
     # Priority path: self-hosted ddexnet/ern-validator-api.
     try:
-        return validate_with_ern_validator_api(xml_bytes, profile=profile, version=version)
+        return validate_with_ern_validator_api_sync(xml_bytes, profile=profile, version=version)
     except ExternalValidatorUnavailable as exc:
         last_error = str(exc)
     except Exception as exc:

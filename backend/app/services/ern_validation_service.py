@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from app.models.validation_result import ValidationResult
 from app.repositories.validation_repository import list_validations, save_validation
-from app.services.ern_validator_api_client import validate_with_ern_validator_api
+from app.services.ern_validator_api_client import validate_with_ern_validator_api_sync
 
 
 def normalize_response(resp: Dict[str, Any]) -> Dict[str, Any]:
@@ -29,7 +29,7 @@ def validate_and_store(
     version: str = "4.3",
     tenant_id: str = "default",
 ) -> Dict[str, Any]:
-    response = validate_with_ern_validator_api(xml_bytes, profile=profile, version=version)
+    response = validate_with_ern_validator_api_sync(xml_bytes, profile=profile, version=version)
     normalized = normalize_response(response)
 
     validation_result = ValidationResult.create(

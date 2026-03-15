@@ -3,7 +3,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
-from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint
+from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint, mead, ern_import
+from app.api import mwn_notifications
 from app.api import analytics
 from app.api import automation
 import logging
@@ -106,6 +107,9 @@ app.include_router(tenants.router, prefix="/api")
 print("including delivery router")
 app.include_router(delivery.router, prefix="/api")
 app.include_router(mwn.router, prefix="/api")
+app.include_router(mead.router, prefix="/api")
+app.include_router(mwn_notifications.router, prefix="/api")
+app.include_router(ern_import.router, prefix="/api")
 app.include_router(rights.router, prefix="/api")
 app.include_router(dsr.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
