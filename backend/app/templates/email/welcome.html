@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>🎵 Bienvenido a AP Studios</h2>
+    <p>Tu cuenta fue creada exitosamente</p>
+  </div>
+  <div class="body">
+    <p>Hola {{ artist_name }},</p>
+    <p style="margin-top:8px;">
+      {{ custom_message or "Tu cuenta está lista para subir música y distribuirla en DSPs." }}
+    </p>
+
+    <table class="table">
+      <tr><td>Email registrado</td><td>{{ email }}</td></tr>
+      <tr><td>Comisión AP Studios</td><td>15%</td></tr>
+      <tr><td>Tu parte</td><td>85%</td></tr>
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/artist">Ir al portal</a>
+  </div>
+{% endblock %}

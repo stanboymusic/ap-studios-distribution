@@ -12,6 +12,7 @@ from typing import Optional
 from app.repositories import royalty_repo
 from app.repositories import user_repository as user_repo
 from app.models.royalty import Payout
+from app.services.notification_service import notify_payout_created, notify_payout_processed
 
 router = APIRouter(prefix="/admin/royalties", tags=["Admin - Royalties"])
 
@@ -210,6 +211,15 @@ def create_payout(body: CreatePayoutRequest, request: Request):
     )
     royalty_repo.save_payout(payout)
 
+    notify_payout_created(
+        email=user.email,
+        artist_name=user.email.split("@")[0],
+        amount=body.amount,
+        currency=body.currency,
+        method=body.method,
+        note=body.note,
+    )
+
     return {
         **payout.to_dict(),
         "artist_email": user.email,
@@ -249,6 +259,17 @@ def mark_payout_paid(
     royalty_repo.save_payout(payout)
 
     user = user_repo.get_by_id(payout.user_id, tenant_id)
+    if user:
+        notify_payout_processed(
+            email=user.email,
+            artist_name=user.email.split("@")[0],
+            amount=payout.amount,
+            currency=payout.currency,
+            method=payout.method,
+            reference=body.reference,
+            paid_at=payout.paid_at or "",
+        )
+
     return {
         **payout.to_dict(),
         "artist_email": user.email if user else "unknown",

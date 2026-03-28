@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>👤 Nuevo artista registrado</h2>
+    <p>Alerta para administración</p>
+  </div>
+  <div class="body">
+    <table class="table">
+      <tr><td>Email</td><td>{{ artist_email }}</td></tr>
+      <tr><td>Fecha registro</td><td>{{ registered_at }}</td></tr>
+      <tr><td>Tenant</td><td>{{ tenant_id }}</td></tr>
+      <tr><td>Contrato firmado</td><td>{{ "Sí" if contract_signed else "Pendiente" }}</td></tr>
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/admin/users">Ver usuarios</a>
+  </div>
+{% endblock %}

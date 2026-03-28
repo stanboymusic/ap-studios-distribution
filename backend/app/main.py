@@ -12,6 +12,7 @@ from app.api.contracts import router as contracts_router
 from app.api.contracts import admin_router as admin_contracts_router
 from app.api.royalties import router as royalties_router
 from app.api.admin_royalties import router as admin_royalties_router
+from app.api import notifications
 import logging
 from app.core.paths import storage_path
 from app.middleware.tenant import TenantContextMiddleware
@@ -142,6 +143,7 @@ app.include_router(dsr.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
 app.include_router(automation.router, prefix="/api")
 app.include_router(fingerprint.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 
 @app.get("/")
 def root():

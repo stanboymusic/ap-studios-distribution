@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>💰 Nuevos royalties disponibles</h2>
+    <p>Período {{ period }}</p>
+  </div>
+  <div class="body">
+    <p>Hola {{ artist_name }},</p>
+    <p style="margin-top:8px;">Se procesaron nuevos ingresos en tu cuenta.</p>
+
+    <table class="table">
+      <tr><td>Streams</td><td>{{ streams }}</td></tr>
+      <tr><td>Ingreso bruto</td><td>${{ gross_amount }}</td></tr>
+      <tr><td>Tu parte (85%)</td><td>${{ net_amount }}</td></tr>
+      <tr><td>Comisión (15%)</td><td>${{ commission_amount }}</td></tr>
+      <tr><td>Balance disponible</td><td>${{ available_balance }}</td></tr>
+      <tr><td>DSP principal</td><td>{{ top_dsp | default("Spotify") }}</td></tr>
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/artist/earnings">Ver earnings</a>
+  </div>
+{% endblock %}
