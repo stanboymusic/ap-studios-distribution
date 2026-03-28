@@ -14,7 +14,7 @@ class ReleaseType(str, Enum):
 class ReleaseCreate(BaseModel):
     title: str
     release_type: ReleaseType
-    original_release_date: date
+    original_release_date: Optional[date] = None
     artist_id: Optional[UUID] = None
     language: str = "es"
     territories: list[str] = ["Worldwide"]
@@ -34,4 +34,5 @@ class ReleaseResponse(BaseModel):
     title: str
     type: str
     status: str
+    owner_user_id: Optional[str] = None
     artist_name: Optional[str] = None

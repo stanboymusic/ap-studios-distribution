@@ -70,10 +70,10 @@ export default function StepPreview({ onNext, onBack }: Props) {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Preview & Validate</h2>
-      <p className="text-gray-500">Review the ERN that will be generated</p>
+      <p style={{ color: "var(--mist-d)" }}>Review the ERN that will be generated</p>
 
       {(!state.tracks || state.tracks.length === 0) && (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="p-4 rounded" style={{ background: "rgba(168,56,90,0.1)", border: "0.5px solid rgba(168,56,90,0.3)", color: "var(--wine-ll)" }}>
           <strong>Atención:</strong> No se han detectado tracks en este lanzamiento. 
           Vuelve al paso de "Tracks" para añadir al menos uno.
         </div>
@@ -83,20 +83,20 @@ export default function StepPreview({ onNext, onBack }: Props) {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-100 p-4 rounded">
-              <div className="text-sm text-gray-600">Profile</div>
+            <div style={{ background: "var(--card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: 16 }}>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>Profile</div>
               <div className="font-semibold">{previewData.summary.profile}</div>
             </div>
-            <div className="bg-gray-100 p-4 rounded">
-              <div className="text-sm text-gray-600">ERN Version</div>
+            <div style={{ background: "var(--card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: 16 }}>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>ERN Version</div>
               <div className="font-semibold">{previewData.summary.ern_version}</div>
             </div>
-            <div className="bg-gray-100 p-4 rounded">
-              <div className="text-sm text-gray-600">Releases</div>
+            <div style={{ background: "var(--card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: 16 }}>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>Releases</div>
               <div className="font-semibold">{previewData.summary.releases_count}</div>
             </div>
-            <div className="bg-gray-100 p-4 rounded">
-              <div className="text-sm text-gray-600">Tracks</div>
+            <div style={{ background: "var(--card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: 16 }}>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>Tracks</div>
               <div className="font-semibold">{previewData.summary.tracks_count}</div>
             </div>
           </div>
@@ -180,11 +180,11 @@ export default function StepPreview({ onNext, onBack }: Props) {
           {/* XML Viewer */}
           <div className="border rounded p-4">
             <h3 className="font-semibold mb-2">XML Preview</h3>
-            <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-64">
+            <pre style={{ background: "rgba(255,255,255,0.03)", border: "0.5px solid var(--border)", borderRadius: 8, padding: 8, fontSize: 13, color: "var(--mist-d)" }} className="overflow-auto max-h-64">
               {xml.substring(0, 1000)}...
             </pre>
             <button
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
+              className="btn-ghost mt-2"
               onClick={() => navigator.clipboard.writeText(xml)}
             >
               Copy XML
@@ -194,10 +194,10 @@ export default function StepPreview({ onNext, onBack }: Props) {
       )}
 
       <div className="flex gap-2">
-        <button onClick={onBack} className="px-4 py-2 border rounded">
+        <button onClick={onBack} className="btn-ghost">
           Back
         </button>
-        <button onClick={onNext} className="px-4 py-2 bg-black text-white rounded">
+        <button onClick={onNext} className="btn-primary">
           Next: Validate
         </button>
       </div>

@@ -110,22 +110,25 @@ export default function StepDelivery({ onBack }: any) {
   return (
     <div>
       <h2 className="text-xl font-semibold">Entrega del Release</h2>
-      <p className="text-gray-500 mb-4">Generar paquete DDEX-compliant para distribución</p>
+      <p style={{ color: "var(--mist-d)" }} className="mb-4">Generar paquete DDEX-compliant para distribución</p>
 
       <div className="mb-4">
         <h3 className="text-lg font-semibold">Estado de Preparación</h3>
         <div className="space-y-2">
           <div className="flex items-center">
-            <span className="mr-2 text-xs font-bold">[OK]</span> Pre-validation completada
+            <span className="mr-2 font-bold" style={{ fontSize: 14 }}>[OK]</span> Pre-validation completada
           </div>
           <div className="flex items-center">
-            <span className="mr-2 text-xs font-bold">[OK]</span> ERN generado
+            <span className="mr-2 font-bold" style={{ fontSize: 14 }}>[OK]</span> ERN generado
           </div>
           <div className="flex items-center">
-            <span className="mr-2 text-xs font-bold">{state.validation?.ddex_status === 'validated' ? '[OK]' : state.validation?.ddex_status === 'external_unavailable' ? '[WARN]' : '[ERROR]'}</span> {state.validation?.ddex_status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'Validación DDEX'}
+            <span className="mr-2 font-bold" style={{ fontSize: 14 }}>
+              {state.validation?.ddex_status === 'validated' ? '[OK]' : state.validation?.ddex_status === 'external_unavailable' ? '[WARN]' : '[ERROR]'}
+            </span>
+            {state.validation?.ddex_status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'Validación DDEX'}
           </div>
           <div className="flex items-center">
-            <span className="mr-2 text-xs font-bold">[OK]</span> Assets verificados
+            <span className="mr-2 font-bold" style={{ fontSize: 14 }}>[OK]</span> Assets verificados
           </div>
         </div>
 
@@ -145,14 +148,14 @@ export default function StepDelivery({ onBack }: any) {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50 mr-2"
+            className="btn-primary disabled:opacity-50 mr-2"
           >
             {exporting ? 'Generando paquete...' : 'Generar Paquete de Entrega'}
           </button>
           <button
             onClick={handleDeliver}
             disabled={delivering || deliveryStatus?.status === 'UPLOADED' || deliveryStatus?.status === 'PROCESSING' || deliveryStatus?.status === 'ACCEPTED'}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {delivering ? 'Entregando...' : 'Entregar al DSP Sandbox'}
           </button>
@@ -168,7 +171,7 @@ export default function StepDelivery({ onBack }: any) {
             <p><strong>Timestamp:</strong> {new Date().toLocaleString()}</p>
             <button
               onClick={handleDownload}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
+              className="btn-primary mt-2"
             >
               Descargar ZIP
             </button>
@@ -216,11 +219,11 @@ export default function StepDelivery({ onBack }: any) {
       )}
 
       <div className="mt-4 flex gap-2">
-        <button onClick={onBack} className="px-4 py-2 border rounded">
+        <button onClick={onBack} className="btn-ghost">
           Atrás
         </button>
         {exportResult?.status === 'exported' && (
-          <button onClick={() => alert('¡Distribución completada!')} className="px-4 py-2 bg-black text-white rounded">
+          <button onClick={() => alert('¡Distribución completada!')} className="btn-primary">
             Finalizar
           </button>
         )}

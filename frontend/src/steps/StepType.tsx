@@ -14,15 +14,15 @@ export default function StepType({ onNext }: any) {
   return (
     <div>
       <h2 className="text-xl font-semibold">Configuración ERN</h2>
-      <p className="text-gray-500 mb-4">Selecciona versión y perfil DDEX</p>
+      <p style={{ color: "var(--mist-d)" }} className="mb-4">Selecciona versión y perfil DDEX</p>
 
       <div className="mb-4">
-        <label htmlFor="ern-version" className="block text-sm font-medium mb-2">Versión ERN</label>
+        <label htmlFor="ern-version">Versión ERN</label>
         <select
           id="ern-version"
           value={version}
           onChange={(e) => setVersion(e.target.value)}
-          className="w-full p-2 border rounded"
+          className="w-full"
         >
           <option value="4.2">ERN 4.2</option>
           <option value="4.3">ERN 4.3</option>
@@ -30,22 +30,19 @@ export default function StepType({ onNext }: any) {
       </div>
 
       <div className="mb-4">
-        <label htmlFor="ern-profile" className="block text-sm font-medium mb-2">Perfil</label>
+        <label htmlFor="ern-profile">Perfil</label>
         <select
           id="ern-profile"
           value={profile}
           onChange={(e) => setProfile(e.target.value)}
-          className="w-full p-2 border rounded"
+          className="w-full"
         >
           <option value="AudioAlbum">Audio Album</option>
           <option value="AudioSingle">Audio Single</option>
         </select>
       </div>
 
-      <button
-        onClick={handleSubmit}
-        className="mt-4 px-4 py-2 bg-black text-white rounded"
-      >
+      <button onClick={handleSubmit} className="btn-primary mt-4">
         Continuar
       </button>
     </div>

@@ -143,8 +143,15 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
     <div className="p-8 space-y-6">
       <header className="flex items-start justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-semibold text-[#1B4079]">Validation Center</h2>
-          <p className="text-sm text-[#4D7C8A]">Revisión administrativa manual de envíos DDEX sin usar código.</p>
+          <h2
+            className="font-semibold"
+            style={{ fontSize: 36, fontFamily: "var(--font-display)", color: "#fff" }}
+          >
+            Validation Center
+          </h2>
+          <p className="text-sm" style={{ color: "var(--mist-d)" }}>
+            Revisión administrativa manual de envíos DDEX sin usar código.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={loadQueue} disabled={loading}>
@@ -168,13 +175,15 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
         </Button>
       </section>
 
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
+      {error ? <div className="text-sm" style={{ color: "var(--wine-ll)" }}>{error}</div> : null}
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <Card className="xl:col-span-2 rounded-2xl border-none shadow-sm">
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-sm text-gray-500">Loading validation queue…</div>
+              <div className="p-8 text-sm" style={{ color: "var(--mist-d)" }}>
+                Loading validation queue…
+              </div>
             ) : (
               <Table>
                 <TableHeader>
@@ -189,7 +198,7 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-9" style={{ color: "var(--mist-d)" }}>
                         No releases in this filter.
                       </TableCell>
                     </TableRow>
@@ -197,19 +206,31 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
                     items.map((item) => (
                       <TableRow
                         key={item.release_id}
-                        className={`cursor-pointer ${selectedId === item.release_id ? "bg-[#F2F6F7]" : ""}`}
+                        className="cursor-pointer"
+                        style={{
+                          background:
+                            selectedId === item.release_id
+                              ? "rgba(107,26,46,0.12)"
+                              : "transparent",
+                        }}
                         onClick={() => setSelectedId(item.release_id)}
                       >
                         <TableCell>
                           <div className="font-medium">{item.title}</div>
-                          <div className="font-mono text-xs text-[#4D7C8A]">{item.release_id.substring(0, 8)}</div>
+                          <div className="font-mono" style={{ fontSize: 14, color: "var(--mist-d)" }}>
+                            {item.release_id.substring(0, 8)}
+                          </div>
                         </TableCell>
                         <TableCell>{item.artist_name}</TableCell>
-                        <TableCell className="text-xs">{(item.ddex_status || "not_validated").toUpperCase()}</TableCell>
+                        <TableCell style={{ fontSize: 14 }}>
+                          {(item.ddex_status || "not_validated").toUpperCase()}
+                        </TableCell>
                         <TableCell>
                           <StateBadge state={item.manual_state} />
                         </TableCell>
-                        <TableCell className="text-xs">{(item.delivery_status || "not_delivered").toUpperCase()}</TableCell>
+                        <TableCell style={{ fontSize: 14 }}>
+                          {(item.delivery_status || "not_delivered").toUpperCase()}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -220,33 +241,46 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
         </Card>
 
         <Card className="rounded-2xl border-none shadow-sm">
-          <CardContent className="space-y-5">
+          <CardContent className="p-7 space-y-5">
             {!selected ? (
-              <div className="text-sm text-gray-500">Selecciona un release para moderar.</div>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>
+                Selecciona un release para moderar.
+              </div>
             ) : (
               <>
                 <div>
-                  <div className="text-sm font-semibold text-[#1B4079]">{selected.title}</div>
-                  <div className="font-mono text-xs text-gray-500 mt-1">{selected.release_id}</div>
+                  <div className="text-sm font-semibold" style={{ color: "var(--mist)" }}>
+                    {selected.title}
+                  </div>
+                  <div className="font-mono mt-1" style={{ fontSize: 14, color: "var(--mist-d)" }}>
+                    {selected.release_id}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="text-[#4D7C8A]">DDEX</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div style={{ color: "var(--mist-d)" }}>DDEX</div>
                   <div>{(selected.ddex_status || "not_validated").toUpperCase()}</div>
-                  <div className="text-[#4D7C8A]">Manual</div>
+                  <div style={{ color: "var(--mist-d)" }}>Manual</div>
                   <div>
                     <StateBadge state={selected.manual_state} />
                   </div>
-                  <div className="text-[#4D7C8A]">UPC</div>
+                  <div style={{ color: "var(--mist-d)" }}>UPC</div>
                   <div className="font-mono">{selected.upc || "—"}</div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs text-[#4D7C8A]">Reason (required for reject)</label>
+                  <label style={{ fontSize: 12, color: "var(--mist-d)", letterSpacing: "0.15em" }}>
+                    Reason (required for reject)
+                  </label>
                   <textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    className="w-full min-h-[92px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                    className="w-full min-h-[92px] rounded-xl px-4 py-3 text-sm"
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "0.5px solid var(--border)",
+                      color: "var(--mist)",
+                    }}
                     placeholder="Ej: Metadata inconsistente, conflicto legal, etc."
                   />
                 </div>
@@ -273,27 +307,41 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
 
       <section>
         <Card className="rounded-2xl border-none shadow-sm">
-          <CardContent>
-            <h3 className="text-sm font-semibold text-[#1B4079]">Validation History</h3>
+          <CardContent className="p-7">
+            <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>
+              Validation History
+            </h3>
             <div className="mt-4 space-y-2">
               {loadingHistory ? (
-                <div className="text-sm text-gray-500">Loading history…</div>
+                <div className="text-sm" style={{ color: "var(--mist-d)" }}>
+                  Loading history…
+                </div>
               ) : history.length === 0 ? (
-                <div className="text-sm text-gray-500">No validation runs yet.</div>
+                <div className="text-sm" style={{ color: "var(--mist-d)" }}>
+                  No validation runs yet.
+                </div>
               ) : (
                 history.slice(0, 10).map((run) => (
-                  <div key={run.id} className="rounded-xl border border-gray-100 px-3 py-3">
+                  <div
+                    key={run.id}
+                    className="rounded-xl px-4 py-4"
+                    style={{ border: "0.5px solid var(--border)" }}
+                  >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium" style={{ color: "var(--mist)" }}>
                         {run.validation_type} · {run.validator}
                       </div>
-                      <span className={`text-xs font-semibold ${run.status === "passed" ? "text-green-600" : "text-red-600"}`}>
+                      <span className={`font-semibold ${run.status === "passed" ? "text-green-600" : "text-red-600"}`} style={{ fontSize: 14 }}>
                         {run.status.toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-xs text-[#4D7C8A] mt-1">{new Date(run.created_at).toLocaleString()}</div>
+                    <div className="mt-1" style={{ fontSize: 14, color: "var(--mist-d)" }}>
+                      {new Date(run.created_at).toLocaleString()}
+                    </div>
                     {run.errors && run.errors.length ? (
-                      <div className="text-xs text-red-600 mt-2">{run.errors[0]?.message || "Validation error"}</div>
+                      <div className="mt-2" style={{ fontSize: 14, color: "var(--wine-ll)" }}>
+                        {run.errors[0]?.message || "Validation error"}
+                      </div>
                     ) : null}
                   </div>
                 ))
@@ -305,4 +353,3 @@ export default function ValidationCenter({ onOpenRelease }: { onOpenRelease?: (r
     </div>
   );
 }
-

@@ -77,24 +77,16 @@ function formatDuration(seconds: number) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const color = useMemo(() => {
+  const pillClass = useMemo(() => {
     const s = (status || "").toUpperCase();
-    if (s === "CONFIRMED") return "bg-emerald-600";
-    if (s === "ACCEPTED") return "bg-green-600";
-    if (s === "REJECTED") return "bg-red-600";
-    if (s === "DELIVERY_QUEUED" || s === "QUEUED") return "bg-indigo-600";
-    if (s === "DELIVERED") return "bg-cyan-600";
-    if (s === "VALIDATED") return "bg-lime-600";
-    if (s === "SIGNED") return "bg-violet-600";
-    if (s === "CREATED") return "bg-slate-500";
-    if (s === "PROCESSING") return "bg-yellow-600";
-    if (s === "UPLOADED" || s === "UPLOADING") return "bg-blue-600";
-    if (s === "DRAFT") return "bg-gray-400";
-    return "bg-gray-500";
+    if (s === "CONFIRMED" || s === "ACCEPTED" || s === "VALIDATED" || s === "DELIVERED") return "pill-green";
+    if (s === "REJECTED") return "pill-wine";
+    if (s === "PROCESSING" || s === "DRAFT" || s === "CREATED") return "pill-gold";
+    return "pill-blue";
   }, [status]);
 
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-white ${color}`}>
+    <span className={`pill ${pillClass}`}>
       {(status || "UNKNOWN").toUpperCase()}
     </span>
   );
@@ -136,7 +128,7 @@ export default function ReleaseDetail({
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-sm text-gray-500">Loading release…</div>
+        <div className="text-sm" style={{ color: "var(--mist-d)" }}>Loading release…</div>
       </div>
     );
   }
@@ -144,7 +136,7 @@ export default function ReleaseDetail({
   if (error || !data) {
     return (
       <div className="p-8 space-y-4">
-        <div className="text-sm text-red-600">{error || "Not found"}</div>
+        <div className="text-sm" style={{ color: "var(--wine-ll)" }}>{error || "Not found"}</div>
         <Button onClick={onBack}>Back</Button>
       </div>
     );
@@ -159,10 +151,10 @@ export default function ReleaseDetail({
       <header className="flex items-start justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-semibold text-[#1B4079]">{title}</h2>
+            <h2 style={{ fontSize: 28, fontFamily: "var(--font-display)", fontWeight: 300, color: "#fff" }}>{title}</h2>
             <StatusBadge status={data.delivery?.current_status || data.status} />
           </div>
-          <div className="text-sm text-[#4D7C8A]">
+          <div className="text-sm" style={{ color: "var(--mist-d)" }}>
             Release ID: <span className="font-mono">{data.id}</span>
           </div>
         </div>
@@ -178,30 +170,30 @@ export default function ReleaseDetail({
         <Card className="rounded-2xl border-none shadow-sm">
           <CardContent className="p-6 space-y-6">
             <div>
-              <h3 className="text-sm font-semibold text-[#1B4079]">Metadata</h3>
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                <dt className="text-[#4D7C8A]">Type</dt>
-                <dd className="text-gray-900">{data.release.type}</dd>
-                <dt className="text-[#4D7C8A]">Release Date</dt>
-                <dd className="text-gray-900">{data.release.original_release_date || "—"}</dd>
-                <dt className="text-[#4D7C8A]">Language</dt>
-                <dd className="text-gray-900">{data.release.language || "—"}</dd>
-                <dt className="text-[#4D7C8A]">UPC</dt>
-                <dd className="text-gray-900">{data.release.upc || "—"}</dd>
-                <dt className="text-[#4D7C8A]">Profile</dt>
-                <dd className="text-gray-900">{data.profile || "—"}</dd>
-                <dt className="text-[#4D7C8A]">Signature</dt>
-                <dd className="text-gray-900">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Metadata</h3>
+              <dl className="release-meta mt-3 grid grid-cols-2 gap-2 text-sm">
+                <dt>Type</dt>
+                <dd>{data.release.type}</dd>
+                <dt>Release Date</dt>
+                <dd>{data.release.original_release_date || "—"}</dd>
+                <dt>Language</dt>
+                <dd>{data.release.language || "—"}</dd>
+                <dt>UPC</dt>
+                <dd>{data.release.upc || "—"}</dd>
+                <dt>Profile</dt>
+                <dd>{data.profile || "—"}</dd>
+                <dt>Signature</dt>
+                <dd>
                   {data.validation?.signed ? `Signed (${data.validation.signature_algorithm || "XMLDSig"})` : "Unsigned"}
                 </dd>
               </dl>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-[#1B4079]">Artist</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Artist</h3>
               <div className="mt-2">
-                <div className="text-sm font-medium text-gray-900">{artistName}</div>
-                <div className="text-xs text-[#4D7C8A] mt-1">
+                <div className="text-sm font-medium" style={{ color: "var(--mist)" }}>{artistName}</div>
+                <div className="text-sm mt-1" style={{ color: "var(--mist-d)" }}>
                   Artist ID: <span className="font-mono">{data.artist?.id || "—"}</span>
                 </div>
               </div>
@@ -213,19 +205,20 @@ export default function ReleaseDetail({
         <Card className="rounded-2xl border-none shadow-sm lg:col-span-1">
           <CardContent className="p-6 space-y-6">
             <div>
-              <h3 className="text-sm font-semibold text-[#1B4079]">Artwork</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Artwork</h3>
               <div className="mt-3">
                 {artworkUrl ? (
                   <img
                     src={artworkUrl}
                     alt="Artwork"
-                    className="w-full max-w-[320px] rounded-xl shadow-sm border border-gray-100"
+                    className="w-full max-w-[320px] rounded-xl"
+                    style={{ border: "0.5px solid var(--border)" }}
                   />
                 ) : (
-                  <div className="text-sm text-gray-500">No artwork attached.</div>
+                  <div className="text-sm" style={{ color: "var(--mist-d)" }}>No artwork attached.</div>
                 )}
                 {data.artwork?.resolution ? (
-                  <div className="text-xs text-[#4D7C8A] mt-2">
+                  <div className="text-sm mt-2" style={{ color: "var(--mist-d)" }}>
                     {data.artwork.resolution} {data.artwork.format ? `· ${data.artwork.format}` : ""}
                   </div>
                 ) : null}
@@ -233,7 +226,7 @@ export default function ReleaseDetail({
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-[#1B4079]">Tracks</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Tracks</h3>
               <div className="mt-3">
                 <Table>
                   <TableHeader>
@@ -246,7 +239,7 @@ export default function ReleaseDetail({
                   <TableBody>
                     {data.tracks.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={3} className="text-center py-6" style={{ color: "var(--mist-d)" }}>
                           No tracks.
                         </TableCell>
                       </TableRow>
@@ -254,7 +247,7 @@ export default function ReleaseDetail({
                       data.tracks.map((t) => (
                         <TableRow key={t.id || `${t.title}-${t.isrc}`}>
                           <TableCell className="font-medium">{t.title}</TableCell>
-                          <TableCell className="font-mono text-xs">{t.isrc || "—"}</TableCell>
+                          <TableCell className="font-mono text-sm">{t.isrc || "—"}</TableCell>
                           <TableCell className="text-right text-sm">{formatDuration(t.duration)}</TableCell>
                         </TableRow>
                       ))
@@ -270,21 +263,21 @@ export default function ReleaseDetail({
         <Card className="rounded-2xl border-none shadow-sm">
           <CardContent className="p-6 space-y-6">
             <div>
-              <h3 className="text-sm font-semibold text-[#1B4079]">Delivery Timeline</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Delivery Timeline</h3>
               <div className="mt-3 space-y-2">
                 {data.delivery.timeline.length === 0 ? (
-                  <div className="text-sm text-gray-500">No delivery events yet.</div>
+                  <div className="text-sm" style={{ color: "var(--mist-d)" }}>No delivery events yet.</div>
                 ) : (
                   data.delivery.timeline.map((e, idx) => (
                     <div key={`${e.timestamp}-${idx}`} className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{e.event}</div>
-                        <div className="text-xs text-[#4D7C8A]">
+                        <div className="text-sm font-medium" style={{ color: "var(--mist)" }}>{e.event}</div>
+                        <div className="text-sm" style={{ color: "var(--mist-d)" }}>
                           {e.dsp ? `${e.dsp} · ` : ""}
                           {e.message || ""}
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500 whitespace-nowrap">
+                      <div className="text-sm whitespace-nowrap" style={{ color: "var(--mist-d)" }}>
                         {e.timestamp ? new Date(e.timestamp).toLocaleString() : "—"}
                       </div>
                     </div>
@@ -294,10 +287,10 @@ export default function ReleaseDetail({
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-[#1B4079]">Validation History</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Validation History</h3>
               <div className="mt-3 space-y-2">
                 {data.validation.history.length === 0 ? (
-                  <div className="text-sm text-gray-500">No validations recorded yet.</div>
+                  <div className="text-sm" style={{ color: "var(--mist-d)" }}>No validations recorded yet.</div>
                 ) : (
                   data.validation.history
                     .slice()
@@ -305,15 +298,15 @@ export default function ReleaseDetail({
                     .map((v, idx) => (
                       <div key={`${v.timestamp}-${idx}`} className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium" style={{ color: "var(--mist)" }}>
                             {v.type} · {v.validator}
                           </div>
-                          <div className="text-xs text-[#4D7C8A]">
+                          <div className="text-sm" style={{ color: "var(--mist-d)" }}>
                             {v.status.toUpperCase()}
                             {Array.isArray(v.errors) && v.errors.length ? ` · ${v.errors.length} errors` : ""}
                           </div>
                         </div>
-                        <div className="text-xs text-gray-500 whitespace-nowrap">
+                        <div className="text-sm whitespace-nowrap" style={{ color: "var(--mist-d)" }}>
                           {v.timestamp ? new Date(v.timestamp).toLocaleString() : "—"}
                         </div>
                       </div>
@@ -329,13 +322,13 @@ export default function ReleaseDetail({
         <Card className="rounded-2xl border-none shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1B4079]">ERN Preview (read-only)</h3>
-              <div className="text-xs text-[#4D7C8A]">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>ERN Preview (read-only)</h3>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>
                 {data.ern.generated ? "Generated" : "Not generated"}
                 {data.ern.last_generated_at ? ` · ${new Date(data.ern.last_generated_at).toLocaleString()}` : ""}
               </div>
             </div>
-            <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl bg-[#0B1020] text-[#EAF0F2] p-4 text-xs leading-relaxed">
+            <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl bg-[#0B1020] text-[#EAF0F2] p-4 text-sm leading-relaxed">
               {data.ern.xml || "—"}
             </pre>
           </CardContent>

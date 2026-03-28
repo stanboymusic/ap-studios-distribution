@@ -1,106 +1,161 @@
-import { useState } from 'react';
-import { WizardProvider } from './app/WizardProvider';
-import ReleaseWizard from './pages/ReleaseWizard';
-import Dashboard from './pages/Dashboard';
-import AppShell from './components/layout/AppShell';
-import ReleaseDetail from './pages/ReleaseDetail';
-import SandboxMonitor from './pages/SandboxMonitor';
-import AnalyticsDashboard from './pages/AnalyticsDashboard';
-import AutomationCenter from './pages/AutomationCenter';
-import ValidationCenter from './pages/ValidationCenter';
-import AuthGateway from './pages/AuthGateway';
-import { clearAuthSession, getUserId, getUserRole, type UserRole } from './app/auth';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "./app/auth";
+import { WizardProvider } from "./app/WizardProvider";
 
-function App() {
-  const [currentPage, setCurrentPage] = useState<'wizard' | 'dashboard' | 'releaseDetail' | 'sandbox' | 'analytics' | 'automation' | 'validation'>('dashboard');
-  const [activeReleaseId, setActiveReleaseId] = useState<string | null>(null);
-  const [authVersion, setAuthVersion] = useState(0);
+// Layouts
+import AdminLayout from "./layouts/AdminLayout";
+import ArtistLayout from "./layouts/ArtistLayout";
 
-  const role = (getUserRole() || null) as UserRole | null;
-  const userId = getUserId() || undefined;
+// Auth / Gate
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import UsersListPage from "./pages/admin/UsersListPage";
+import UserDetailPage from "./pages/admin/UserDetailPage";
+import ContractsPage from "./pages/admin/ContractsPage";
+import ContractPage from "./pages/artist/ContractPage";
+import EarningsPage from "./pages/artist/EarningsPage";
+import RoyaltiesPage from "./pages/admin/RoyaltiesPage";
 
-  // Ensure a tenant is always set (required by backend middleware)
-  if (!localStorage.getItem("tenantId")) {
-    localStorage.setItem("tenantId", "default");
-  }
+// Admin pages (existing)
+import Dashboard from "./pages/Dashboard";
+import SandboxMonitor from "./pages/SandboxMonitor";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import AutomationCenter from "./pages/AutomationCenter";
+import ValidationCenter from "./pages/ValidationCenter";
+import ReleaseDetail from "./pages/ReleaseDetail";
+import ReleaseWizard from "./pages/ReleaseWizard";
 
-  if (!role) {
-    return <AuthGateway onSignedIn={() => setAuthVersion((v) => v + 1)} />;
-  }
+// Artist pages (new)
+import ArtistDashboard from "./pages/artist/ArtistDashboard";
+import ArtistProfile from "./pages/artist/ArtistProfile";
 
-  void authVersion;
+// ─────────────────────────────────────────────────────────────────
+// Root redirect: sends unauthenticated users to /login, others to
+// their role's home page.
+// ─────────────────────────────────────────────────────────────────
+function RootRedirect() {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <Navigate to={user?.role === "admin" ? "/admin" : "/artist"} replace />;
+}
 
+// ─────────────────────────────────────────────────────────────────
+// Admin dashboard wrapper — keeps the wizard-based navigation that
+// Dashboard currently relies on (onNewRelease / onOpenRelease).
+// ─────────────────────────────────────────────────────────────────
+function AdminDashboardPage() {
+  const navigate = useNavigate();
+  return (
+    <Dashboard
+      onNewRelease={() => navigate("/admin/wizard")}
+      onOpenRelease={(id) => navigate(`/admin/releases/${id}`)}
+    />
+  );
+}
+
+function AdminWizardPage() {
+  const navigate = useNavigate();
   return (
     <WizardProvider>
-      <AppShell 
-        onNavigate={(page: any) => {
-          if (page === 'Dashboard') setCurrentPage('dashboard');
-          if (page === 'Releases') setCurrentPage('dashboard');
-          if (page === 'Sandbox') setCurrentPage('sandbox');
-          if (page === 'Reporting') setCurrentPage('analytics');
-          if (page === 'Validation') setCurrentPage('validation');
-          if (page === 'Settings') setCurrentPage('automation');
-        }}
-        userRole={role}
-        userId={userId}
-        onLogout={() => {
-          clearAuthSession();
-          setCurrentPage('dashboard');
-          setActiveReleaseId(null);
-          setAuthVersion((v) => v + 1);
-        }}
-        activePage={
-          currentPage === 'dashboard'
-            ? 'Dashboard'
-            : currentPage === 'releaseDetail'
-              ? 'Releases'
-              : currentPage === 'sandbox'
-                ? 'Sandbox'
-                : currentPage === 'analytics'
-                  ? 'Reporting'
-                  : currentPage === 'validation'
-                    ? 'Validation'
-                  : currentPage === 'automation'
-                    ? 'Settings'
-                : 'Wizard'
-        }
-      >
-        {currentPage === 'wizard' ? (
-          <ReleaseWizard onFinish={() => setCurrentPage('dashboard')} />
-        ) : currentPage === 'releaseDetail' && activeReleaseId ? (
-          <ReleaseDetail
-            releaseId={activeReleaseId}
-            onBack={() => setCurrentPage('dashboard')}
-          />
-        ) : currentPage === 'sandbox' ? (
-          role === 'admin' ? <SandboxMonitor /> : <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
-        ) : currentPage === 'analytics' ? (
-          role === 'admin' ? <AnalyticsDashboard /> : <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
-        ) : currentPage === 'validation' ? (
-          role === 'admin' ? (
-            <ValidationCenter
-              onOpenRelease={(id) => {
-                setActiveReleaseId(id);
-                setCurrentPage('releaseDetail');
-              }}
-            />
-          ) : (
-            <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
-          )
-        ) : currentPage === 'automation' ? (
-          role === 'admin' ? <AutomationCenter /> : <Dashboard onNewRelease={() => setCurrentPage('wizard')} onOpenRelease={(id) => { setActiveReleaseId(id); setCurrentPage('releaseDetail'); }} />
-        ) : (
-          <Dashboard
-            onNewRelease={() => setCurrentPage('wizard')}
-            onOpenRelease={(id) => {
-              setActiveReleaseId(id);
-              setCurrentPage('releaseDetail');
-            }}
-          />
-        )}
-      </AppShell>
+      <ReleaseWizard onFinish={() => navigate("/admin")} />
     </WizardProvider>
   );
 }
 
-export default App;
+function AdminReleaseDetailPage() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  if (!id) return <Navigate to="/admin" replace />;
+  return <ReleaseDetail releaseId={id} onBack={() => navigate("/admin")} />;
+}
+
+function AdminValidationPage() {
+  const navigate = useNavigate();
+  return (
+    <ValidationCenter
+      onOpenRelease={(id) => navigate(`/admin/releases/${id}`)}
+    />
+  );
+}
+
+function ArtistWizardPage() {
+  const navigate = useNavigate();
+  return (
+    <WizardProvider>
+      <ReleaseWizard onFinish={() => navigate("/artist")} />
+    </WizardProvider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// App
+// ─────────────────────────────────────────────────────────────────
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Root */}
+        <Route path="/" element={<RootRedirect />} />
+
+        {/* Login */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/artist/contract"
+          element={
+            <ProtectedRoute requiredRole="artist">
+              <ContractPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Admin area ─────────────────────────────────────── */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="releases" element={<AdminDashboardPage />} />
+          <Route path="releases/:id" element={<AdminReleaseDetailPage />} />
+          <Route path="wizard" element={<AdminWizardPage />} />
+          <Route path="sandbox" element={<SandboxMonitor />} />
+          <Route path="analytics" element={<AnalyticsDashboard />} />
+          <Route path="automation" element={<AutomationCenter />} />
+          <Route path="validation" element={<AdminValidationPage />} />
+          <Route path="royalties" element={<RoyaltiesPage />} />
+          {/* delivery — served by Dashboard deliveries tab */}
+          <Route path="delivery" element={<AdminDashboardPage />} />
+          {/* artists — served by Dashboard catalog tab */}
+          <Route path="artists" element={<AdminDashboardPage />} />
+          <Route path="users" element={<UsersListPage />} />
+          <Route path="users/:id" element={<UserDetailPage />} />
+          <Route path="contracts" element={<ContractsPage />} />
+        </Route>
+
+        {/* ── Artist portal ─────────────────────────────────── */}
+        <Route
+          path="/artist"
+          element={
+            <ProtectedRoute requiredRole="artist">
+              <ArtistLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ArtistDashboard />} />
+          <Route path="new" element={<ArtistWizardPage />} />
+          <Route path="earnings" element={<EarningsPage />} />
+          <Route path="analytics" element={<AnalyticsDashboard />} />
+          <Route path="profile" element={<ArtistProfile />} />
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

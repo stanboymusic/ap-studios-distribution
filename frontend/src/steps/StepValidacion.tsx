@@ -51,13 +51,13 @@ export default function StepValidacion({ onNext, onBack }: any) {
   return (
     <div>
       <h2 className="text-xl font-semibold">Validación</h2>
-      <p className="text-gray-500 mb-4">Validación final del lanzamiento con DDEX Workbench</p>
+      <p style={{ color: "var(--mist-d)" }} className="mb-4">Validación final del lanzamiento con DDEX Workbench</p>
 
       <div className="mb-4">
         <button
           onClick={handleValidate}
           disabled={loading}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          className="btn-primary disabled:opacity-50"
         >
           {loading ? 'Validando...' : 'Validar con DDEX'}
         </button>
@@ -84,7 +84,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
                 {validationResult.pre_validation?.details?.xsd && !validationResult.pre_validation.details.xsd.valid && (
                   <div className="mt-2 text-red-800 font-bold">
                     Error de esquema (XSD):
-                    <pre className="text-xs bg-red-200 p-1 mt-1">
+                    <pre className="text-[13px] bg-red-200 p-1 mt-1">
                       {validationResult.pre_validation.details.xsd.errors.join('\n')}
                     </pre>
                   </div>
@@ -92,7 +92,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
                 {validationResult.raw_response && (
                   <details className="mt-2">
                     <summary className="cursor-pointer font-medium">Ver respuesta cruda</summary>
-                    <pre className="mt-2 whitespace-pre-wrap text-xs bg-red-50 p-1 max-h-40 overflow-auto">
+                    <pre className="mt-2 whitespace-pre-wrap text-[13px] bg-red-50 p-1 max-h-40 overflow-auto">
                       {validationResult.raw_response}
                     </pre>
                   </details>
@@ -102,18 +102,27 @@ export default function StepValidacion({ onNext, onBack }: any) {
           </div>
           <div className="space-y-2">
             {validationResult.validator_source && (
-              <div className="text-xs text-gray-600">
+              <div className="text-gray-600" style={{ fontSize: 14 }}>
                 Validator source: <span className="font-mono">{validationResult.validator_source}</span>
               </div>
             )}
             <div className="flex items-center">
-              <span className="mr-2 text-xs font-bold">{validationResult.pre_validation?.valid ? '[OK]' : '[ERROR]'}</span> Pre-validation
+              <span className="mr-2 font-bold" style={{ fontSize: 14 }}>
+                {validationResult.pre_validation?.valid ? '[OK]' : '[ERROR]'}
+              </span>
+              Pre-validation
             </div>
             <div className="flex items-center">
-              <span className="mr-2 text-xs font-bold">{validationResult.ern_generated ? '[OK]' : '[ERROR]'}</span> ERN Generated
+              <span className="mr-2 font-bold" style={{ fontSize: 14 }}>
+                {validationResult.ern_generated ? '[OK]' : '[ERROR]'}
+              </span>
+              ERN Generated
             </div>
             <div className="flex items-center">
-              <span className="mr-2 text-xs font-bold">{validationResult.status === 'validated' ? '[OK]' : validationResult.status === 'failed' ? '[ERROR]' : validationResult.status === 'external_unavailable' ? '[WARN]' : '[...]'}</span> {validationResult.status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'DDEX Validation'}
+              <span className="mr-2 font-bold" style={{ fontSize: 14 }}>
+                {validationResult.status === 'validated' ? '[OK]' : validationResult.status === 'failed' ? '[ERROR]' : validationResult.status === 'external_unavailable' ? '[WARN]' : '[...]'}
+              </span>
+              {validationResult.status === 'external_unavailable' ? 'DDEX Public Validator (optional)' : 'DDEX Validation'}
             </div>
           </div>
 
@@ -157,7 +166,7 @@ export default function StepValidacion({ onNext, onBack }: any) {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {exporting ? 'Exportando...' : 'Exportar Release'}
           </button>
@@ -171,11 +180,11 @@ export default function StepValidacion({ onNext, onBack }: any) {
       )}
 
       <div className="mt-4 flex gap-2">
-        <button onClick={onBack} className="px-4 py-2 border rounded">
+        <button onClick={onBack} className="btn-ghost">
           Atrás
         </button>
         {(validationResult?.status === 'validated' || validationResult?.status === 'external_unavailable' || (validationResult?.pre_validation?.valid && validationResult?.ern_generated)) && onNext && (
-          <button onClick={onNext} className="px-4 py-2 bg-black text-white rounded">
+          <button onClick={onNext} className="btn-primary">
             Continuar a Entrega
           </button>
         )}

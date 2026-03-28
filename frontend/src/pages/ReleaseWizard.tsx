@@ -9,10 +9,11 @@ import StepFechas from "../steps/StepFechas";
 import StepPreview from "../steps/StepPreview";
 import StepValidacion from "../steps/StepValidacion";
 import StepDelivery from "../steps/StepDelivery";
-import { isAdminRole } from "../app/auth";
+import { useAuth } from "../app/auth";
 
 export default function ReleaseWizard({ onFinish }: { onFinish?: () => void }) {
-  const isAdmin = isAdminRole();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const steps = isAdmin
     ? ["Tipo", "Artista", "Release", "Tracks", "Derechos", "Artwork", "Fechas", "Preview", "Validación", "Entrega"]
     : ["Tipo", "Artista", "Release", "Tracks", "Derechos", "Artwork", "Fechas", "Preview"];
@@ -21,10 +22,10 @@ export default function ReleaseWizard({ onFinish }: { onFinish?: () => void }) {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Nuevo Lanzamiento</h1>
+        <h1 style={{ fontSize: 22, fontFamily: "var(--font-display)", color: "#fff" }}>Nuevo Lanzamiento</h1>
         <button 
           onClick={onFinish}
-          className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+          className="btn-ghost text-sm"
         >
           Cancelar
         </button>
@@ -35,9 +36,12 @@ export default function ReleaseWizard({ onFinish }: { onFinish?: () => void }) {
           {steps.map((step, index) => (
             <div
               key={index}
-              className={`flex-1 text-center py-2 text-[10px] md:text-xs border-r last:border-r-0 ${
-                index <= current ? "bg-black text-white" : "bg-gray-200"
-              }`}
+              className="flex-1 text-center py-3 text-[14px]"
+              style={{
+                background: index < current ? "rgba(93,191,138,0.15)" : index === current ? "var(--wine)" : "rgba(107,26,46,0.15)",
+                color: index < current ? "var(--success)" : index === current ? "#fff" : "var(--mist-d)",
+                borderRight: index < steps.length - 1 ? "0.5px solid var(--border)" : "none",
+              }}
             >
               {step}
             </div>

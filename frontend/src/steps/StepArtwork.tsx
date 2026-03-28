@@ -50,13 +50,13 @@ export default function StepArtwork({ onNext, onBack }: any) {
       <h2 className="text-xl font-semibold">[ Assets ]</h2>
 
       <div className="mt-4">
-        <label htmlFor="coverArt" className="block text-sm font-medium mb-2">Cover Art:</label>
+        <label htmlFor="coverArt">Cover Art:</label>
         <input
           id="coverArt"
           type="file"
           accept="image/jpeg,image/png"
           onChange={handleFileChange}
-          className="border p-2 w-full"
+          className="border w-full"
         />
 
         {file && (
@@ -64,7 +64,7 @@ export default function StepArtwork({ onNext, onBack }: any) {
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+              className="btn-primary disabled:opacity-50"
             >
               {uploading ? 'Subiendo...' : 'Subir Imagen'}
             </button>
@@ -72,30 +72,30 @@ export default function StepArtwork({ onNext, onBack }: any) {
         )}
 
         {uploadResult && uploadResult.status === 'ok' && (
-          <div className="mt-2 text-green-600 font-bold">
+          <div className="mt-2 font-bold" style={{ color: "var(--success)" }}>
             [OK] {uploadResult.width}x{uploadResult.height} {uploadResult.format}
           </div>
         )}
 
         {uploadResult && uploadResult.detail && (
-          <div className="mt-2 text-red-600 font-bold">
+          <div className="mt-2 font-bold" style={{ color: "var(--wine-ll)" }}>
             [ERROR] {uploadResult.detail}
           </div>
         )}
       </div>
 
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="mt-4 text-sm" style={{ color: "var(--mist-d)" }}>
         Requisitos: 3000x3000 px mínimo, JPG o PNG, RGB
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button onClick={onBack} className="px-4 py-2 border rounded">
+        <button onClick={onBack} className="btn-ghost">
           Atrás
         </button>
         <button
           onClick={onNext}
           disabled={!uploadResult || uploadResult.status !== 'ok'}
-          className="px-4 py-2 bg-black text-white rounded disabled:opacity-50"
+          className="btn-primary disabled:opacity-50"
         >
           Continuar
         </button>

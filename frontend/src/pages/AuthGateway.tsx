@@ -34,7 +34,7 @@ export default function AuthGateway({ onSignedIn }: { onSignedIn: () => void }) 
               onClick={() => setRole("artist")}
             >
               <div className="text-sm font-semibold text-[#1B4079]">Artist Portal</div>
-              <div className="text-xs text-[#4D7C8A] mt-1">Subir canciones y revisar estado.</div>
+              <div className="text-sm text-[#4D7C8A] mt-1">Subir canciones y revisar estado.</div>
             </button>
             <button
               className={`rounded-xl border px-4 py-4 text-left ${
@@ -43,12 +43,12 @@ export default function AuthGateway({ onSignedIn }: { onSignedIn: () => void }) 
               onClick={() => setRole("admin")}
             >
               <div className="text-sm font-semibold text-[#1B4079]">AP Admin</div>
-              <div className="text-xs text-[#4D7C8A] mt-1">Aprobar, rechazar y despachar releases.</div>
+              <div className="text-sm text-[#4D7C8A] mt-1">Aprobar, rechazar y despachar releases.</div>
             </button>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs text-[#4D7C8A]">User ID</label>
+            <label className="text-sm text-[#4D7C8A]">User ID</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -65,4 +65,3 @@ export default function AuthGateway({ onSignedIn }: { onSignedIn: () => void }) 
     </div>
   );
 }
-

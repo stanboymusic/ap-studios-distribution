@@ -15,18 +15,18 @@ function Badge({ text, tone }: { text: string; tone: "green" | "red" | "blue" | 
   const cls = useMemo(() => {
     switch (tone) {
       case "green":
-        return "bg-green-600";
+        return "pill-green";
       case "red":
-        return "bg-red-600";
+        return "pill-wine";
       case "blue":
-        return "bg-blue-600";
+        return "pill-blue";
       case "yellow":
-        return "bg-yellow-600";
+        return "pill-gold";
       default:
-        return "bg-gray-500";
+        return "pill-gold";
     }
   }, [tone]);
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold text-white ${cls}`}>{text}</span>;
+  return <span className={`pill ${cls}`}>{text}</span>;
 }
 
 function statusTone(status: DSPMonitorItem["status"]) {
@@ -105,7 +105,12 @@ export default function SandboxMonitor() {
     <Card className="rounded-2xl border-none shadow-sm">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#1B4079]">{title}</h3>
+          <h3
+            className="text-sm font-semibold"
+            style={{ color: "var(--mist)", fontFamily: "var(--font-display)" }}
+          >
+            {title}
+          </h3>
         </div>
         <div className="mt-4">{children}</div>
       </CardContent>
@@ -137,8 +142,15 @@ export default function SandboxMonitor() {
     <div className="p-8 space-y-6">
       <header className="flex items-start justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-semibold text-[#1B4079]">DSP Sandbox Monitor</h2>
-          <p className="text-sm text-[#4D7C8A]">Fuente de verdad: `sandbox-dsp/` (incoming/processing/accepted/rejected/logs)</p>
+          <h2
+            className="font-semibold"
+            style={{ fontSize: 36, fontFamily: "var(--font-display)", color: "#fff" }}
+          >
+            DSP Sandbox Monitor
+          </h2>
+          <p className="text-sm" style={{ color: "var(--mist-d)" }}>
+            Fuente de verdad: `sandbox-dsp/` (incoming/processing/accepted/rejected/logs)
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={refresh}>
@@ -170,14 +182,20 @@ export default function SandboxMonitor() {
                   rowsIncoming.map((r) => (
                     <TableRow
                       key={r.path}
-                      className={`cursor-pointer ${selectedReleaseId === r.release_id ? "bg-[#F2F6F7]" : ""}`}
+                      className="cursor-pointer"
+                      style={{
+                        background:
+                          selectedReleaseId === r.release_id
+                            ? "rgba(107,26,46,0.12)"
+                            : "transparent",
+                      }}
                       onClick={() => setSelectedReleaseId(r.release_id)}
                     >
-                      <TableCell className="font-mono text-xs">{r.release_id.substring(0, 8)}</TableCell>
+                      <TableCell className="font-mono text-sm">{r.release_id.substring(0, 8)}</TableCell>
                       <TableCell>
                         <Badge text={r.status.toUpperCase()} tone={statusTone(r.status)} />
                       </TableCell>
-                      <TableCell className="text-xs text-gray-500">{r.path}</TableCell>
+                      <TableCell className="text-sm text-gray-500">{r.path}</TableCell>
                       <TableCell>{r.has_log ? "Yes" : "—"}</TableCell>
                     </TableRow>
                   ))
@@ -195,15 +213,24 @@ export default function SandboxMonitor() {
                   <button
                     key={p.path}
                     onClick={() => setSelectedReleaseId(p.release_id)}
-                    className={`w-full text-left rounded-xl border border-gray-100 px-4 py-3 hover:bg-gray-50 ${
-                      selectedReleaseId === p.release_id ? "bg-[#F2F6F7]" : "bg-white"
-                    }`}
+                    className="w-full text-left rounded-xl px-4 py-3"
+                    style={{
+                      background:
+                        selectedReleaseId === p.release_id
+                          ? "rgba(107,26,46,0.12)"
+                          : "var(--card)",
+                      border: "0.5px solid var(--border)",
+                    }}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-mono text-xs text-[#1B4079]">{p.release_id}</div>
+                      <div className="font-mono text-sm" style={{ color: "var(--mist)" }}>
+                        {p.release_id}
+                      </div>
                       <Badge text="PROCESSING" tone="yellow" />
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{p.path}</div>
+                    <div className="text-sm mt-1" style={{ color: "var(--mist-d)" }}>
+                      {p.path}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -219,15 +246,24 @@ export default function SandboxMonitor() {
                   <button
                     key={a.path}
                     onClick={() => setSelectedReleaseId(a.release_id)}
-                    className={`text-left rounded-xl border border-gray-100 px-4 py-3 hover:bg-gray-50 ${
-                      selectedReleaseId === a.release_id ? "bg-[#F2F6F7]" : "bg-white"
-                    }`}
+                    className="text-left rounded-xl px-4 py-3"
+                    style={{
+                      background:
+                        selectedReleaseId === a.release_id
+                          ? "rgba(107,26,46,0.12)"
+                          : "var(--card)",
+                      border: "0.5px solid var(--border)",
+                    }}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-mono text-xs text-[#1B4079]">{a.release_id.substring(0, 8)}</div>
+                      <div className="font-mono text-sm" style={{ color: "var(--mist)" }}>
+                        {a.release_id.substring(0, 8)}
+                      </div>
                       <Badge text="ACCEPTED" tone="green" />
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{a.path}</div>
+                    <div className="text-sm mt-1" style={{ color: "var(--mist-d)" }}>
+                      {a.path}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -243,15 +279,24 @@ export default function SandboxMonitor() {
                   <button
                     key={rj.path}
                     onClick={() => setSelectedReleaseId(rj.release_id)}
-                    className={`text-left rounded-xl border border-gray-100 px-4 py-3 hover:bg-gray-50 ${
-                      selectedReleaseId === rj.release_id ? "bg-[#F2F6F7]" : "bg-white"
-                    }`}
+                    className="text-left rounded-xl px-4 py-3"
+                    style={{
+                      background:
+                        selectedReleaseId === rj.release_id
+                          ? "rgba(107,26,46,0.12)"
+                          : "var(--card)",
+                      border: "0.5px solid var(--border)",
+                    }}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-mono text-xs text-[#1B4079]">{rj.release_id.substring(0, 8)}</div>
+                      <div className="font-mono text-sm" style={{ color: "var(--mist)" }}>
+                        {rj.release_id.substring(0, 8)}
+                      </div>
                       <Badge text="REJECTED" tone="red" />
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{rj.path}</div>
+                    <div className="text-sm mt-1" style={{ color: "var(--mist-d)" }}>
+                      {rj.path}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -262,48 +307,101 @@ export default function SandboxMonitor() {
         <div className="space-y-6">
           <Section title="Control Panel">
             {!selectedReleaseId ? (
-              <div className="text-sm text-gray-500">Select a release.</div>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>
+                Select a release.
+              </div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs text-[#4D7C8A]">Release ID</div>
-                  <div className="font-mono text-xs text-gray-900 break-all">{selectedReleaseId}</div>
+                  <div
+                    className="text-sm uppercase"
+                    style={{ color: "var(--mist-d)", letterSpacing: "0.15em", fontSize: 12 }}
+                  >
+                    Release ID
+                  </div>
+                  <div className="font-mono text-sm break-all" style={{ color: "var(--mist)" }}>
+                    {selectedReleaseId}
+                  </div>
                 </div>
 
                 <div>
-                  <div className="text-xs text-[#4D7C8A]">DSP Status</div>
+                  <div
+                    className="text-sm uppercase"
+                    style={{ color: "var(--mist-d)", letterSpacing: "0.15em", fontSize: 12 }}
+                  >
+                    DSP Status
+                  </div>
                   <div className="mt-1">
                     {selected ? <Badge text={selected.status.toUpperCase()} tone={statusTone(selected.status)} /> : "—"}
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">Actions only enabled while status is `processing`.</div>
+                  <div className="text-sm mt-2" style={{ color: "var(--mist-d)" }}>
+                    Actions only enabled while status is `processing`.
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs text-[#4D7C8A]">Reject reason</div>
+                  <div
+                    className="text-sm uppercase"
+                    style={{ color: "var(--mist-d)", letterSpacing: "0.15em", fontSize: 12 }}
+                  >
+                    Reject reason
+                  </div>
                   <input
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Reason (required for reject)"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-xl px-3 py-2 text-sm"
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "0.5px solid var(--border)",
+                      color: "var(--mist)",
+                    }}
                   />
                   <div className="flex gap-2">
-                    <Button onClick={() => act("approve")} disabled={actionBusy !== null || !canModerate}>
+                    <button
+                      onClick={() => act("approve")}
+                      disabled={actionBusy !== null || !canModerate}
+                      className="btn-primary"
+                    >
                       {actionBusy === "approve" ? "Approving…" : "Approve"}
-                    </Button>
-                    <Button variant="ghost" onClick={() => act("reject")} disabled={actionBusy !== null || !canModerate || !reason.trim()}>
+                    </button>
+                    <button
+                      onClick={() => act("reject")}
+                      disabled={actionBusy !== null || !canModerate || !reason.trim()}
+                      className="btn-ghost"
+                      style={{
+                        background: "rgba(107,26,46,0.15)",
+                        border: "0.5px solid var(--border)",
+                        color: "var(--wine-ll)",
+                      }}
+                    >
                       {actionBusy === "reject" ? "Rejecting…" : "Reject"}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="text-xs text-[#4D7C8A]">Logs</div>
+                <div className="pt-4" style={{ borderTop: "0.5px solid var(--border)" }}>
+                  <div
+                    className="text-sm uppercase"
+                    style={{ color: "var(--mist-d)", letterSpacing: "0.15em", fontSize: 12 }}
+                  >
+                    Logs
+                  </div>
                   {logText ? (
-                    <pre className="mt-2 max-h-[360px] overflow-auto rounded-xl bg-[#0B1020] text-[#EAF0F2] p-3 text-xs">
+                    <pre
+                      className="mt-2 max-h-[360px] overflow-auto rounded-xl p-3 text-sm"
+                      style={{
+                        background: "rgba(255,255,255,0.03)",
+                        border: "0.5px solid var(--border)",
+                        color: "var(--mist)",
+                      }}
+                    >
                       {logText}
                     </pre>
                   ) : (
-                    <div className="text-sm text-gray-500 mt-2">No logs yet.</div>
+                    <div className="text-sm mt-2" style={{ color: "var(--mist-d)" }}>
+                      No logs yet.
+                    </div>
                   )}
                 </div>
               </div>
@@ -314,4 +412,3 @@ export default function SandboxMonitor() {
     </div>
   );
 }
-

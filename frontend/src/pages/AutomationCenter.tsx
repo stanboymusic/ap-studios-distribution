@@ -58,12 +58,19 @@ export default function AutomationCenter() {
     <div className="p-8 space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-[#1B4079]">Automation Center</h2>
-          <p className="text-sm text-[#4D7C8A]">Rules, executions, and audit trail (per tenant)</p>
+          <h2
+            className="font-semibold"
+            style={{ fontSize: 36, fontFamily: "var(--font-display)", color: "#fff" }}
+          >
+            Automation Center
+          </h2>
+          <p className="text-sm" style={{ color: "var(--mist-d)" }}>
+            Rules, executions, and audit trail (per tenant)
+          </p>
         </div>
         <button
           onClick={() => load().catch(console.error)}
-          className="px-3 py-2 rounded border text-sm"
+          className="btn-ghost"
         >
           Refresh
         </button>
@@ -73,45 +80,71 @@ export default function AutomationCenter() {
         <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Engine</div>
-              <div className="text-xs text-gray-600">Global kill-switch for this tenant.</div>
+              <div className="text-sm font-medium" style={{ color: "var(--mist)" }}>
+                Engine
+              </div>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>
+                Global kill-switch for this tenant.
+              </div>
             </div>
             <button
               onClick={toggleEnabled}
-              className={`px-3 py-2 rounded text-sm ${settings?.enabled ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
+              className="px-3 py-2 rounded text-sm"
+              style={{
+                background: settings?.enabled ? "var(--wine)" : "rgba(107,26,46,0.2)",
+                color: settings?.enabled ? "#fff" : "var(--mist)",
+                border: "0.5px solid var(--border)",
+              }}
               disabled={!settings || saving}
             >
               {settings?.enabled ? 'ENABLED' : 'DISABLED'}
             </button>
           </div>
 
-          <div className="border-t pt-4">
-            <div className="text-sm font-medium mb-2">Rules</div>
+          <div className="pt-4" style={{ borderTop: "0.5px solid var(--border)" }}>
+            <div className="text-sm font-medium mb-2" style={{ color: "var(--mist)" }}>
+              Rules
+            </div>
             {settings ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {Object.keys(settings.rules || {}).map((k) => (
                   <button
                     key={k}
                     onClick={() => toggle(k)}
-                    className="flex items-center justify-between border rounded px-3 py-2 text-sm hover:bg-gray-50"
+                    className="flex items-center justify-between rounded px-3 py-2 text-sm"
+                    style={{
+                      background: "var(--card)",
+                      border: "0.5px solid var(--border)",
+                      color: "var(--mist)",
+                    }}
                     disabled={saving}
                   >
-                    <span className="font-mono text-xs">{k}</span>
-                    <span className={settings.rules[k] ? 'text-green-700 font-medium' : 'text-gray-500'}>
+                    <span className="font-mono text-sm">{k}</span>
+                    <span
+                      className={settings.rules[k] ? 'font-medium' : ''}
+                      style={{ color: settings.rules[k] ? "var(--success)" : "var(--mist-d)" }}
+                    >
                       {settings.rules[k] ? 'ON' : 'OFF'}
                     </span>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-gray-500">Loading…</div>
+              <div className="text-sm" style={{ color: "var(--mist-d)" }}>
+                Loading…
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <div className="p-4 border-b text-sm font-medium">Execution Logs</div>
+        <div
+          className="p-4 border-b text-sm font-medium"
+          style={{ borderBottom: "0.5px solid var(--border)", color: "var(--mist)" }}
+        >
+          Execution Logs
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -133,14 +166,14 @@ export default function AutomationCenter() {
             ) : (
               logs.map((l) => (
                 <TableRow key={l.id}>
-                  <TableCell className="text-xs text-gray-600">{l.created_at}</TableCell>
-                  <TableCell className="text-xs font-mono">{l.event_type}</TableCell>
-                  <TableCell className="text-xs font-mono">{l.rule}</TableCell>
-                  <TableCell className="text-xs">{l.action}</TableCell>
-                  <TableCell className={l.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                  <TableCell className="text-sm">{l.created_at}</TableCell>
+                  <TableCell className="text-sm font-mono">{l.event_type}</TableCell>
+                  <TableCell className="text-sm font-mono">{l.rule}</TableCell>
+                  <TableCell className="text-sm">{l.action}</TableCell>
+                  <TableCell className="font-medium" style={{ color: l.success ? "var(--success)" : "var(--wine-ll)" }}>
                     {l.success ? 'OK' : 'FAIL'}
                   </TableCell>
-                  <TableCell className="text-xs text-gray-700">{l.message}</TableCell>
+                  <TableCell className="text-sm">{l.message}</TableCell>
                 </TableRow>
               ))
             )}
@@ -150,4 +183,3 @@ export default function AutomationCenter() {
     </div>
   );
 }
-

@@ -20,8 +20,8 @@ export default function AnalyticsDashboard() {
     })();
   }, []);
 
-  if (loading) return <div className="text-sm text-gray-500">Loading…</div>;
-  if (!data) return <div className="text-sm text-gray-500">No analytics yet.</div>;
+  if (loading) return <div className="text-sm" style={{ color: "var(--mist-d)" }}>Loading…</div>;
+  if (!data) return <div className="text-sm" style={{ color: "var(--mist-d)" }}>No analytics yet.</div>;
 
   const byDspEntries = Object.entries(data.by_dsp || {});
   const byTerritoryEntries = Object.entries(data.by_territory || {});
@@ -29,25 +29,41 @@ export default function AnalyticsDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-[#1B4079] text-white">
-          <CardContent className="p-6">
+        <Card
+          className="text-white"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(107,26,46,0.55) 0%, rgba(74,31,82,0.75) 100%)",
+            border: "0.5px solid var(--border)",
+          }}
+        >
+          <CardContent className="p-7">
             <h3 className="text-sm font-medium opacity-80">Total Revenue (Analytics)</h3>
-            <p className="text-4xl font-bold mt-2">
+            <p className="font-bold mt-2" style={{ fontSize: 38 }}>
               {data.currency} {Number(data.total_revenue || 0).toFixed(6)}
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
-            <h3 className="text-sm font-medium text-[#4D7C8A]">DSPs tracked</h3>
-            <p className="text-4xl font-bold text-[#1B4079] mt-2">{byDspEntries.length}</p>
+          <CardContent className="p-7">
+            <h3 className="text-sm font-medium" style={{ color: "var(--mist-d)" }}>
+              DSPs tracked
+            </h3>
+            <p className="font-bold mt-2" style={{ fontSize: 38, color: "var(--mist)" }}>
+              {byDspEntries.length}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-0 overflow-hidden">
-          <div className="p-4 border-b text-sm font-medium">Revenue by DSP</div>
+          <div
+            className="p-5 border-b text-sm font-medium"
+            style={{ borderBottom: "0.5px solid var(--border)", color: "var(--mist)" }}
+          >
+            Revenue by DSP
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -58,7 +74,7 @@ export default function AnalyticsDashboard() {
             <TableBody>
               {byDspEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="py-6 text-center text-sm text-gray-500">Empty</TableCell>
+                  <TableCell colSpan={2} className="py-7 text-center text-sm" style={{ color: "var(--mist-d)" }}>Empty</TableCell>
                 </TableRow>
               ) : (
                 byDspEntries.map(([k, v]) => (
@@ -73,7 +89,12 @@ export default function AnalyticsDashboard() {
         </Card>
 
         <Card className="p-0 overflow-hidden">
-          <div className="p-4 border-b text-sm font-medium">Revenue by Territory</div>
+          <div
+            className="p-5 border-b text-sm font-medium"
+            style={{ borderBottom: "0.5px solid var(--border)", color: "var(--mist)" }}
+          >
+            Revenue by Territory
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -84,7 +105,7 @@ export default function AnalyticsDashboard() {
             <TableBody>
               {byTerritoryEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="py-6 text-center text-sm text-gray-500">Empty</TableCell>
+                  <TableCell colSpan={2} className="py-7 text-center text-sm" style={{ color: "var(--mist-d)" }}>Empty</TableCell>
                 </TableRow>
               ) : (
                 byTerritoryEntries.map(([k, v]) => (
@@ -101,4 +122,3 @@ export default function AnalyticsDashboard() {
     </div>
   );
 }
-

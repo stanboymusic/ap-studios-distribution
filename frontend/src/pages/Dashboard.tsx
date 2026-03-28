@@ -5,7 +5,7 @@ import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/Table";
 import RevenueDashboard from "./RevenueDashboard";
-import { isAdminRole } from "../app/auth";
+import { useAuth } from "../app/auth";
 
 interface ReleaseResponse {
   id: string;
@@ -25,7 +25,8 @@ export default function Dashboard({
   const [deliveries, setDeliveries] = useState<DeliveryOverview[]>([]);
   const [releases, setReleases] = useState<ReleaseResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const isAdmin = isAdminRole();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [activeTab, setActiveTab] = useState<"deliveries" | "releases" | "revenue">(isAdmin ? "deliveries" : "releases");
 
   useEffect(() => {
@@ -81,8 +82,10 @@ export default function Dashboard({
     <div className="p-8 space-y-10">
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-semibold text-[#1B4079]">{isAdmin ? "Dashboard" : "Artist Portal"}</h2>
-          <p className="text-sm text-[#4D7C8A]">
+          <h2 className="font-semibold" style={{ fontSize: 36, fontFamily: "var(--font-display)", color: "#fff" }}>
+            {isAdmin ? "Dashboard" : "Artist Portal"}
+          </h2>
+          <p className="text-sm" style={{ color: "var(--mist-d)" }}>
             {isAdmin ? "Release management and distribution center" : "Manage your releases and track approval status"}
           </p>
         </div>
@@ -98,24 +101,27 @@ export default function Dashboard({
       </section>
 
       <section className="space-y-4">
-        <div className="flex border-b border-gray-200">
+        <div className="flex" style={{ borderBottom: "0.5px solid var(--border)" }}>
           {isAdmin ? (
             <button
-              className={`px-4 py-2 font-medium text-sm ${activeTab === "deliveries" ? "border-b-2 border-[#1B4079] text-[#1B4079]" : "text-gray-500"}`}
+              className="px-4 py-2 font-medium text-sm"
+              style={activeTab === "deliveries" ? { borderBottom: "2px solid var(--wine-ll)", color: "var(--mist)", background: "rgba(107,26,46,0.15)" } : { color: "var(--mist-d)", background: "transparent" }}
               onClick={() => setActiveTab("deliveries")}
             >
               Recent Deliveries
             </button>
           ) : null}
           <button
-            className={`px-4 py-2 font-medium text-sm ${activeTab === "releases" ? "border-b-2 border-[#1B4079] text-[#1B4079]" : "text-gray-500"}`}
+            className="px-4 py-2 font-medium text-sm"
+            style={activeTab === "releases" ? { borderBottom: "2px solid var(--wine-ll)", color: "var(--mist)", background: "rgba(107,26,46,0.15)" } : { color: "var(--mist-d)", background: "transparent" }}
             onClick={() => setActiveTab("releases")}
           >
             {isAdmin ? "Catalog (All)" : "My Releases"}
           </button>
           {isAdmin ? (
             <button
-              className={`px-4 py-2 font-medium text-sm ${activeTab === "revenue" ? "border-b-2 border-[#1B4079] text-[#1B4079]" : "text-gray-500"}`}
+              className="px-4 py-2 font-medium text-sm"
+              style={activeTab === "revenue" ? { borderBottom: "2px solid var(--wine-ll)", color: "var(--mist)", background: "rgba(107,26,46,0.15)" } : { color: "var(--mist-d)", background: "transparent" }}
               onClick={() => setActiveTab("revenue")}
             >
               Financials & Revenue
@@ -128,7 +134,7 @@ export default function Dashboard({
         ) : (
           <Card className="p-0 overflow-hidden">
             {loading ? (
-              <div className="p-8 text-sm text-gray-500">Loading…</div>
+              <div className="p-8 text-sm" style={{ color: "var(--mist-d)" }}>Loading…</div>
             ) : activeTab === "deliveries" && isAdmin ? (
               <Table>
                 <TableHeader>
@@ -143,14 +149,14 @@ export default function Dashboard({
                 <TableBody>
                   {deliveries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8" style={{ color: "var(--mist-d)" }}>
                         No deliveries found.
                       </TableCell>
                     </TableRow>
                   ) : (
                     deliveries.map((r) => (
                       <TableRow key={r.release_id}>
-                        <TableCell className="font-medium text-[#1B4079]">{r.release_id.substring(0, 8)}</TableCell>
+                        <TableCell className="font-medium font-mono" style={{ color: "var(--mist)" }}>{r.release_id.substring(0, 8)}</TableCell>
                         <TableCell className="font-medium">{r.title}</TableCell>
                         <TableCell>{r.dsp}</TableCell>
                         <TableCell>
@@ -159,7 +165,7 @@ export default function Dashboard({
                             <span className="capitalize">{r.status.toLowerCase()}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-[#4D7C8A]">
+                        <TableCell style={{ color: "var(--mist-d)" }}>
                           {r.last_event ? new Date(r.last_event).toLocaleDateString() : "N/A"}
                         </TableCell>
                       </TableRow>
@@ -181,7 +187,7 @@ export default function Dashboard({
                 <TableBody>
                   {releases.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8" style={{ color: "var(--mist-d)" }}>
                         {isAdmin ? "Catalog is empty." : "You do not have releases yet."}
                       </TableCell>
                     </TableRow>
@@ -189,10 +195,11 @@ export default function Dashboard({
                     releases.map((r) => (
                       <TableRow
                         key={r.id}
-                        className="cursor-pointer hover:bg-gray-50"
+                        className="cursor-pointer"
+                        style={{ background: "transparent" }}
                         onClick={() => onOpenRelease?.(r.id)}
                       >
-                        <TableCell className="font-medium text-[#1B4079]">{r.id.substring(0, 8)}</TableCell>
+                        <TableCell className="font-medium font-mono" style={{ color: "var(--mist)" }}>{r.id.substring(0, 8)}</TableCell>
                         <TableCell className="font-medium">{r.title}</TableCell>
                         <TableCell>{r.artist_name || "Unknown"}</TableCell>
                         <TableCell>{r.type}</TableCell>
@@ -217,12 +224,13 @@ export default function Dashboard({
 
 function StatCard({ title, value }: { title: string; value: number }) {
   return (
-    <Card className="rounded-2xl border-none shadow-sm">
-      <CardContent className="p-6">
-        <h2 className="text-sm font-medium text-[#4D7C8A]">{title}</h2>
-        <p className="text-3xl font-bold text-[#1B4079] mt-2">{value}</p>
+    <Card>
+      <CardContent className="p-7">
+        <h2 className="text-sm font-medium" style={{ color: "var(--mist-d)" }}>{title}</h2>
+        <p className="font-bold mt-2" style={{ fontSize: 38, color: "var(--mist)" }}>
+          {value}
+        </p>
       </CardContent>
     </Card>
   );
 }
-

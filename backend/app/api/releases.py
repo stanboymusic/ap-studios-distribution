@@ -10,21 +10,31 @@ from mutagen import File as MutagenFile
 import shutil
 from app.core.paths import storage_path
 from app.fingerprinting.fingerprint_service import process_audio_fingerprint
-from app.core.auth import current_user_id, ensure_release_access, is_admin
+from app.core.auth import ensure_release_access
+from app.repositories import catalog_repository
+from app.repositories import contract_repository as contract_repo
 
 router = APIRouter(prefix="/releases", tags=["Releases"])
 
 @router.post("/", response_model=ReleaseResponse)
 def create_release(data: ReleaseCreate, request: Request):
-    print("DEBUG: create_release called with data:", data.dict())
-    tenant_id = request.state.tenant_id
+    user_id = getattr(request.state, "user_id", None)
+    user_role = getattr(request.state, "user_role", "artist")
+    tenant_id = getattr(request.state, "tenant_id", "default")
 
-    if not data.artist_id:
-        raise HTTPException(
-            status_code=400,
-            detail="artist_id is required. Create/select an artist first."
-        )
-    if not CatalogService.get_artist_by_id(data.artist_id, tenant_id=tenant_id):
+    # Admin no necesita contrato
+    # Artistas sin contrato no pueden crear releases
+    if user_role != "admin" and user_id and not user_id.endswith(":anonymous"):
+        if not contract_repo.has_accepted(user_id, tenant_id):
+            raise HTTPException(
+                status_code=403,
+                detail="You must accept the AP Studios distribution terms "
+                       "before creating releases. Go to /artist/contract.",
+            )
+
+    print("DEBUG: create_release called with data:", data.dict())
+
+    if data.artist_id and not CatalogService.get_artist_by_id(data.artist_id, tenant_id=tenant_id):
         raise HTTPException(status_code=400, detail="artist_id does not exist")
 
     release = ReleaseDraft()
@@ -34,11 +44,16 @@ def create_release(data: ReleaseCreate, request: Request):
     release.language = data.language
     release.territories = data.territories
     release.artist_id = data.artist_id
-    release.owner_user_id = current_user_id(request)
+    # Extraer user_id del JWT (seteado por AuthContextMiddleware)
+    owner_user_id = getattr(request.state, "user_id", None)
+    # No guardar el anonymous placeholder
+    if owner_user_id and owner_user_id.endswith(":anonymous"):
+        owner_user_id = None
+    release.owner_user_id = owner_user_id
     try:
         release_identity = create_catalog_release(
             title=data.title,
-            artist_id=str(data.artist_id),
+            artist_id=str(data.artist_id) if data.artist_id else None,
             tenant_id=tenant_id,
         )
         release.upc = release_identity["upc"]
@@ -54,16 +69,25 @@ def create_release(data: ReleaseCreate, request: Request):
         release_id=release.id,
         title=release.title,
         type=release.release_type.value if hasattr(release.release_type, "value") else str(release.release_type),
-        status=release.status
+        status=release.status,
+        owner_user_id=release.owner_user_id,
     )
 
 @router.get("/", response_model=List[ReleaseResponse])
 def list_releases(request: Request):
     tenant_id = request.state.tenant_id
     releases = CatalogService.get_releases(tenant_id=tenant_id)
-    if not is_admin(request):
-        me = current_user_id(request)
-        releases = [r for r in releases if (getattr(r, "owner_user_id", None) or "") == me]
+    user_id = getattr(request.state, "user_id", None)
+    user_role = getattr(request.state, "user_role", "artist")
+    if user_role != "admin":
+        if user_id and not user_id.endswith(":anonymous"):
+            releases = [
+                r
+                for r in releases
+                if getattr(r, "owner_user_id", None) == user_id
+            ]
+        else:
+            releases = []
     artists = CatalogService.get_artists(tenant_id=tenant_id)
     artist_map = {a.id: a.name for a in artists}
     
@@ -75,6 +99,7 @@ def list_releases(request: Request):
             title=r.title or "Untitled",
             type=r.release_type.value if hasattr(r.release_type, "value") else str(r.release_type),
             status=r.status,
+            owner_user_id=getattr(r, "owner_user_id", None),
             artist_name=artist_map.get(r.artist_id) if r.artist_id else "Unknown"
         )
         for r in releases
@@ -83,39 +108,84 @@ def list_releases(request: Request):
 @router.get("/{release_id}")
 def get_release(release_id: UUID, request: Request):
     tenant_id = request.state.tenant_id
+    user_id = getattr(request.state, "user_id", None)
+    user_role = getattr(request.state, "user_role", "artist")
+
     release = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
-    if release:
-        ensure_release_access(request, release)
-        return release.to_dict()
-    raise HTTPException(status_code=404, detail="Release not found")
+    if not release:
+        raise HTTPException(status_code=404, detail="Release not found")
+
+    if user_role != "admin":
+        release_owner = getattr(release, "owner_user_id", None)
+        if release_owner != user_id:
+            raise HTTPException(status_code=404, detail="Release not found")
+
+    return release.to_dict()
 
 @router.put("/{release_id}")
 def update_release(release_id: UUID, payload: ReleaseUpdate, request: Request):
     tenant_id = request.state.tenant_id
-    release = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
-    if release:
-        ensure_release_access(request, release)
-        if payload.upc:
-            candidate_upc = (payload.upc or "").strip()
-            if candidate_upc and candidate_upc != (release.upc or "").strip():
-                try:
-                    release.upc = claim_manual_upc(
-                        candidate_upc,
-                        tenant_id=tenant_id,
-                        source=f"release:{release.id}",
-                    )
-                except ValueError as exc:
-                    raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if payload.original_release_date:
-            release.original_release_date = payload.original_release_date
-        if payload.artwork_id:
-            release.artwork_id = payload.artwork_id
-        if payload.artist_id:
-            release.artist_id = payload.artist_id
-        
-        CatalogService.save_release(release, tenant_id=tenant_id)
-        return release.to_dict()
-    raise HTTPException(status_code=404, detail="Release not found")
+    owner_user_id = getattr(request.state, "user_id", None)
+    user_role = getattr(request.state, "user_role", "artist")
+
+    existing = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Release not found")
+
+    # Admin puede editar cualquier release
+    # Artista solo puede editar las suyas
+    if user_role != "admin":
+        if owner_user_id and existing.owner_user_id:
+            if existing.owner_user_id != owner_user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only edit your own releases",
+                )
+
+    release = existing
+    if payload.upc:
+        candidate_upc = (payload.upc or "").strip()
+        if candidate_upc and candidate_upc != (release.upc or "").strip():
+            try:
+                release.upc = claim_manual_upc(
+                    candidate_upc,
+                    tenant_id=tenant_id,
+                    source=f"release:{release.id}",
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if payload.original_release_date:
+        release.original_release_date = payload.original_release_date
+    if payload.artwork_id:
+        release.artwork_id = payload.artwork_id
+    if payload.artist_id:
+        release.artist_id = payload.artist_id
+    
+    CatalogService.save_release(release, tenant_id=tenant_id)
+    return release.to_dict()
+
+@router.delete("/{release_id}")
+def delete_release(release_id: UUID, request: Request):
+    tenant_id = request.state.tenant_id
+    owner_user_id = getattr(request.state, "user_id", None)
+    user_role = getattr(request.state, "user_role", "artist")
+
+    existing = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Release not found")
+
+    if user_role != "admin":
+        if owner_user_id and existing.owner_user_id:
+            if existing.owner_user_id != owner_user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only delete your own releases",
+                )
+
+    deleted = catalog_repository.delete_release(tenant_id, str(release_id))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Release not found")
+    return {"status": "deleted"}
 
 @router.post("/{release_id}/audio")
 def upload_audio(

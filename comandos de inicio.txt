@@ -9,9 +9,10 @@ cd backend
 uvicorn app.main:app --reload
 
 
-Arranque:
-cd backend
-.\venv\Scripts\activate
-uvicorn app.main:app --reload
-cd frontend
-npm run dev
+Arranque (un solo comando):
+# Si PowerShell bloquea scripts:
+# Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\start-dev.ps1
+
+# Con sandbox:
+.\start-dev.ps1 -WithSandbox

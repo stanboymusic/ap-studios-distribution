@@ -16,6 +16,8 @@ from app.services.dsr_parser import parse_dsrf_file, DSRFParseError
 from app.services.dsr_history_store import DSRHistoryStore
 from app.automation.engine import AutomationEngine
 from app.automation.events import AutomationEvent
+from app.services.royalty_engine import process_dsr_report
+import logging
 
 router = APIRouter(prefix="/dsr", tags=["DSR"])
 
@@ -215,7 +217,7 @@ async def ingest_sales_report(request: Request):
                 row_count=parsed.get("raw_row_count"),
             )
 
-            return {
+            response_data = {
                 "status": "ok",
                 "dsrf_version": validation.get("version"),
                 "filename": getattr(file, "filename", None),
@@ -224,6 +226,28 @@ async def ingest_sales_report(request: Request):
                 "summary": parsed["summary"],
                 "warnings": validation.get("warnings"),
             }
+
+            try:
+                summary = parsed.get("summary") or {}
+                parsed_dsr = {
+                    "dsr_id": getattr(file, "filename", None) or "dsrf-upload",
+                    "dsp": summary.get("dsp_name") or "unknown_dsp",
+                    "period": summary.get("period_end") or summary.get("period_start") or "",
+                    "currency": summary.get("currency") or "USD",
+                    "records": parsed.get("records") or [],
+                }
+                royalty_summary = process_dsr_report(
+                    dsr_data=parsed_dsr,
+                    tenant_id=tenant_id,
+                )
+                response_data["royalty_summary"] = royalty_summary
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    f"Royalty processing failed for DSR: {exc}"
+                )
+                response_data["royalty_summary"] = {"error": str(exc)}
+
+            return response_data
         except HTTPException:
             raise
         except DSRFParseError as exc:

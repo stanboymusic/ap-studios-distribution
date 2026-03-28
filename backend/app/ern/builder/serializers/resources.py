@@ -1,4 +1,5 @@
 from app.ern.builder.xml_utils import sub
+from app.ern.builder.serializers.tracks import validate_isrc_for_ern
 
 def build_resource_list(parent, resources, registry, ns):
     rl = sub(parent, "ResourceList", ns=ns)
@@ -11,7 +12,8 @@ def build_resource_list(parent, resources, registry, ns):
             sub(sr, "ResourceReference", ref, ns=ns)
             
             sr_id = sub(sr, "SoundRecordingId", ns=ns)
-            sub(sr_id, "ISRC", r.isrc, ns=ns)
+            validated_isrc = validate_isrc_for_ern(r.isrc, r.title)
+            sub(sr_id, "ISRC", validated_isrc, ns=ns)
 
             sub(sr, "SoundRecordingType", "MusicalWorkSoundRecording", ns=ns)
             sub(sr, "Duration", f"PT{r.duration_seconds}S", ns=ns)

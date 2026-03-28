@@ -8,6 +8,7 @@ class ERNBuildError(ValueError):
 
 
 _UPC_RE = re.compile(r"^\d{12}$")
+PLACEHOLDER_UPCS = {"1234567890123", "000000000000", "123456789012"}
 
 
 def _get_release_field(release, key: str):
@@ -18,16 +19,24 @@ def _get_release_field(release, key: str):
     return None
 
 
-def validate_upc_for_ern(upc: str, release_id: str) -> str:
+def validate_upc_for_ern(upc: str | None, release_id: str | None = None) -> str:
     """
     Validate UPC for ERN serialization (12 digits, valid checksum).
     Returns cleaned UPC or raises ERNBuildError.
     """
     candidate = (upc or "").strip()
+    if not candidate:
+        raise ERNBuildError("UPC is required to build an ERN message")
+
+    if candidate in PLACEHOLDER_UPCS:
+        raise ERNBuildError(
+            f"UPC '{candidate}' is a placeholder - assign a real UPC before delivery"
+        )
 
     if not _UPC_RE.fullmatch(candidate):
+        release_hint = f" for release {release_id}" if release_id else ""
         raise ERNBuildError(
-            f"UPC '{candidate}' for release {release_id} has invalid format "
+            f"UPC '{candidate}'{release_hint} has invalid format "
             "(expected exactly 12 numeric digits)."
         )
 
@@ -35,8 +44,9 @@ def validate_upc_for_ern(upc: str, release_id: str) -> str:
     total = sum(d * (3 if i % 2 == 1 else 1) for i, d in enumerate(digits[:11]))
     expected_check = (10 - (total % 10)) % 10
     if digits[11] != expected_check:
+        release_hint = f" for release {release_id}" if release_id else ""
         raise ERNBuildError(
-            f"UPC '{candidate}' for release {release_id} has invalid checksum. "
+            f"UPC '{candidate}'{release_hint} has invalid checksum. "
             f"Expected check digit {expected_check}, got {digits[11]}."
         )
 

@@ -9,10 +9,11 @@ export type WizardAction =
   | { type: "UPDATE_RIGHTS"; payload: any }
   | { type: "UPDATE_VALIDATION"; payload: any }
   | { type: "SET_STATUS"; payload: any }
-  | { type: "SET_ID"; payload: string };
+  | { type: "SET_ID"; payload: string }
+  | { type: "SET_FIELD"; field: string; value: any };
 
 export function wizardReducer(state: ReleaseDraft, action: WizardAction) {
-  console.log('[Wizard Action]', action.type, action.payload);
+  console.log('[Wizard Action]', action.type, 'field' in action ? (action as any).field : '', action.payload ?? ('value' in action ? (action as any).value : ''));
   switch (action.type) {
     case "INIT":
       return action.payload;
@@ -36,6 +37,8 @@ export function wizardReducer(state: ReleaseDraft, action: WizardAction) {
       return { ...state, status: action.payload };
     case "SET_ID":
       return { ...state, id: action.payload };
+    case "SET_FIELD":
+      return { ...state, [action.field]: action.value };
     default:
       return state;
   }

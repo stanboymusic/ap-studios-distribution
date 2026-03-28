@@ -81,36 +81,48 @@ export default function RevenueDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-[#1B4079] text-white">
-          <CardContent className="p-6">
-            <h3 className="text-sm font-medium opacity-80">Total Distributed Revenue</h3>
-            <p className="text-4xl font-bold mt-2">
+        <Card
+          style={{
+            background: "linear-gradient(135deg, rgba(107,26,46,0.55) 0%, rgba(74,31,82,0.75) 100%)",
+            border: "0.5px solid var(--border)",
+          }}
+        >
+          <CardContent className="p-7">
+            <h3 className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>Total Distributed Revenue</h3>
+            <p className="font-bold mt-2" style={{ fontSize: 38, color: "#fff" }}>
               {balances?.currency || 'USD'} {totalRevenue.toFixed(6)}
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
-            <h3 className="text-sm font-medium text-[#4D7C8A]">Transactions Count</h3>
-            <p className="text-4xl font-bold text-[#1B4079] mt-2">{ledger.length}</p>
+          <CardContent className="p-7">
+            <h3 className="text-sm font-medium" style={{ color: "var(--mist-d)" }}>Transactions Count</h3>
+            <p className="font-bold mt-2" style={{ fontSize: 38, color: "var(--mist)" }}>
+              {ledger.length}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="p-7 space-y-3">
           <div className="text-sm font-medium">Ingest DSR (JSON normalizado)</div>
-          <div className="text-xs text-gray-600">
+          <div className="text-sm" style={{ color: "var(--mist-d)" }}>
             Pega una lista de items. Asegúrate de que exista una configuración de derechos (splits 100%) para el
             `release_ref` (y opcionalmente `track_ref`).
           </div>
           <textarea
             value={ingestJson}
             onChange={(e) => setIngestJson(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-xs font-mono min-h-[160px]"
+            className="w-full min-h-[160px] rounded-xl px-4 py-3 text-sm font-mono"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "0.5px solid var(--border)",
+              color: "var(--mist)",
+            }}
           />
           <div className="flex items-center gap-3">
-            <button onClick={ingest} className="px-4 py-2 rounded bg-[#1B4079] text-white text-sm">
+            <button onClick={ingest} className="btn-primary">
               Ingest
             </button>
             {ingestStatus ? <div className="text-sm">{ingestStatus}</div> : null}
@@ -118,26 +130,26 @@ export default function RevenueDashboard() {
 
           <div className="flex flex-col md:flex-row gap-3 md:items-end">
             <div className="flex-1">
-              <label className="block text-sm text-gray-600">Party Reference (para Statement)</label>
+              <label className="block text-sm" style={{ color: "var(--mist-d)" }}>Party Reference (para Statement)</label>
               <input
                 value={party}
                 onChange={(e) => setParty(e.target.value)}
-                className="mt-1 w-full border rounded px-3 py-2 text-sm"
+                className="mt-1 w-full"
                 placeholder="Ej: P-ARTIST-1"
               />
             </div>
             <button
               onClick={loadStatement}
-              className="px-4 py-2 rounded bg-[#1B4079] text-white text-sm"
+              className="btn-primary"
             >
               Ver Statement
             </button>
           </div>
-          {statementError ? <div className="text-sm text-red-600">{statementError}</div> : null}
+          {statementError ? <div className="text-sm" style={{ color: "var(--wine-ll)" }}>{statementError}</div> : null}
           {statement ? (
             <div className="text-sm">
-              <div className="font-medium">Total: {statement.currency} {Number(statement.total_amount || 0).toFixed(6)}</div>
-              <div className="text-gray-600">Periodo: {statement.period_start} → {statement.period_end}</div>
+              <div className="font-medium" style={{ color: "var(--mist)" }}>Total: {statement.currency} {Number(statement.total_amount || 0).toFixed(6)}</div>
+              <div style={{ color: "var(--mist-d)" }}>Periodo: {statement.period_start} → {statement.period_end}</div>
             </div>
           ) : null}
         </CardContent>
@@ -145,7 +157,7 @@ export default function RevenueDashboard() {
 
       <Card className="p-0 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-sm text-gray-500">Loading…</div>
+          <div className="p-[36px] text-sm" style={{ color: "var(--mist-d)" }}>Loading…</div>
         ) : (
         <Table>
           <TableHeader>
@@ -162,7 +174,7 @@ export default function RevenueDashboard() {
           <TableBody>
             {ledger.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-9" style={{ color: "var(--mist-d)" }}>
                   No revenue data available yet.
                 </TableCell>
               </TableRow>
@@ -170,14 +182,14 @@ export default function RevenueDashboard() {
               ledger.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">{item.party_reference}</TableCell>
-                  <TableCell className="text-xs text-gray-700">{item.role}</TableCell>
-                  <TableCell className="text-xs text-gray-700">{item.dsp}</TableCell>
-                  <TableCell className="text-xs text-gray-700">{item.usage_type}</TableCell>
-                  <TableCell className="text-xs text-gray-700">{item.territory}</TableCell>
-                  <TableCell className="font-bold text-green-700">
+                  <TableCell className="text-sm" style={{ color: "var(--mist-d)" }}>{item.role}</TableCell>
+                  <TableCell className="text-sm" style={{ color: "var(--mist-d)" }}>{item.dsp}</TableCell>
+                  <TableCell className="text-sm" style={{ color: "var(--mist-d)" }}>{item.usage_type}</TableCell>
+                  <TableCell className="text-sm" style={{ color: "var(--mist-d)" }}>{item.territory}</TableCell>
+                  <TableCell className="font-bold" style={{ color: "var(--success)" }}>
                     {item.currency} {Number(item.amount || 0).toFixed(6)}
                   </TableCell>
-                  <TableCell className="text-xs text-gray-600">{item.period_start} → {item.period_end}</TableCell>
+                  <TableCell className="text-sm" style={{ color: "var(--mist-d)" }}>{item.period_start} → {item.period_end}</TableCell>
                 </TableRow>
               ))
             )}

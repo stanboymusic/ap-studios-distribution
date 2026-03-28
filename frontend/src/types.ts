@@ -43,12 +43,48 @@ export interface ReleaseDraft {
     genres: { primary: string; secondary?: string };
     original_release_date?: string;
     upc?: string;
+    release_type?: string;
+    language?: string;
+    territories?: string[];
   };
   tracks?: any[];
   artwork?: any;
   deals?: any;
   validation?: any;
   rights?: RightsDraft;
+  delivery?: any;
+
+  // Credits
+  featuring_artists?: string[];
+  remixer?: string;
+  producer?: string;
+  composer?: string;
+
+  // Genre & Label
+  genre?: string;
+  subgenre?: string;
+  label_name?: string;
+  c_line?: string;
+  p_line?: string;
+  meta_language?: string;
+  product_version?: string;
+  product_code?: string;
+
+  // Distribution
+  sale_date?: string;
+  preorder_date?: string;
+  preorder_previewable?: boolean;
+  excluded_territories?: string[];
+  album_price?: string;
+  track_price?: string;
+
+  // Publishing
+  publishing?: Array<{
+    track_id: string;
+    track_title: string;
+    publishing_type: string;
+    publisher_name: string;
+  }>;
 }
 
 export interface RightsShare {

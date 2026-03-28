@@ -174,39 +174,43 @@ export default function StepRights({ onNext, onBack }: any) {
         <div className="flex gap-2">
           <button 
             onClick={() => applyPreset('artist-100')}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            className="btn-ghost text-sm"
           >
             Artist 100%
           </button>
           <button 
             onClick={() => applyPreset('split-50-50')}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            className="btn-ghost text-sm"
           >
             Split 50/50
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded border">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, background: "var(--card)", padding: 16, borderRadius: 10, border: "0.5px solid var(--border)" }}>
         <div>
-          <label htmlFor="rights-scope" className="block text-sm font-medium text-gray-700">Scope</label>
+          <label htmlFor="rights-scope">
+            Scope
+          </label>
           <select 
             id="rights-scope"
             value={scope} 
             onChange={(e) => setScope(e.target.value)}
-            className="mt-1 block w-full border rounded-md p-2"
+            className="mt-1 block w-full"
           >
             <option value="release">Release</option>
             <option value="track">Track (All)</option>
           </select>
         </div>
         <div>
-          <label htmlFor="rights-territory" className="block text-sm font-medium text-gray-700">Territory</label>
+          <label htmlFor="rights-territory">
+            Territory
+          </label>
           <select 
             id="rights-territory"
             value={territory} 
             onChange={(e) => handleTerritoryChange(e.target.value)}
-            className="mt-1 block w-full border rounded-md p-2"
+            className="mt-1 block w-full"
           >
             <option value="WORLD">WORLD</option>
             <option value="US">United States</option>
@@ -214,50 +218,56 @@ export default function StepRights({ onNext, onBack }: any) {
           </select>
         </div>
         <div>
-          <label htmlFor="rights-usage" className="block text-sm font-medium text-gray-700">Usage Type</label>
+          <label htmlFor="rights-usage">
+            Usage Type
+          </label>
           <select 
             id="rights-usage"
             value={usageType} 
             onChange={(e) => handleUsageTypeChange(e.target.value)}
-            className="mt-1 block w-full border rounded-md p-2"
+            className="mt-1 block w-full"
           >
             <option value="Streaming">Streaming</option>
             <option value="Download">Download</option>
           </select>
         </div>
         <div>
-          <label htmlFor="rights-valid-from" className="block text-sm font-medium text-gray-700">Valid From</label>
+          <label htmlFor="rights-valid-from">
+            Valid From
+          </label>
           <input 
             id="rights-valid-from"
             type="date" 
             value={validFrom}
             onChange={(e) => handleValidFromChange(e.target.value)}
-            className="mt-1 block w-full border rounded-md p-2"
+            className="mt-1 block w-full"
           />
         </div>
         <div>
-          <label htmlFor="rights-valid-to" className="block text-sm font-medium text-gray-700">Valid To (Optional)</label>
+          <label htmlFor="rights-valid-to">
+            Valid To (Optional)
+          </label>
           <input 
             id="rights-valid-to"
             type="date" 
             value={validTo}
             onChange={(e) => handleValidToChange(e.target.value)}
-            className="mt-1 block w-full border rounded-md p-2"
+            className="mt-1 block w-full"
           />
         </div>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+        <table className="w-full text-sm text-left table-dark">
+          <thead>
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Party</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">% Share</th>
-              <th className="px-4 py-2"></th>
+              <th className="px-4 py-3 text-left font-medium uppercase" style={{ fontSize: 13, color: "var(--mist-d)" }}>Party</th>
+              <th className="px-4 py-3 text-left font-medium uppercase" style={{ fontSize: 13, color: "var(--mist-d)" }}>Role</th>
+              <th className="px-4 py-3 text-left font-medium uppercase" style={{ fontSize: 13, color: "var(--mist-d)" }}>% Share</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {shares.map((share, index) => (
               <tr key={index}>
                 <td className="px-4 py-2">
@@ -267,7 +277,8 @@ export default function StepRights({ onNext, onBack }: any) {
                     value={share.partyReference}
                     onChange={(e) => updateShare(index, 'partyReference', e.target.value)}
                     placeholder="Party Name/Ref"
-                    className="w-full border-none focus:ring-0 text-sm"
+                    className="w-full border-none focus:ring-0"
+                    style={{ fontSize: 14, background: "transparent", color: "var(--mist)" }}
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -275,7 +286,8 @@ export default function StepRights({ onNext, onBack }: any) {
                     aria-label={`Rights type for share ${index + 1}`}
                     value={share.rightsType}
                     onChange={(e) => updateShare(index, 'rightsType', e.target.value)}
-                    className="w-full border-none focus:ring-0 text-sm"
+                    className="w-full border-none focus:ring-0"
+                    style={{ fontSize: 14, background: "transparent", color: "var(--mist)" }}
                   >
                     <option value="SoundRecording">SoundRecording</option>
                     <option value="MusicalWork">MusicalWork</option>
@@ -287,13 +299,14 @@ export default function StepRights({ onNext, onBack }: any) {
                     aria-label={`Percentage share for ${index + 1}`}
                     value={share.sharePercentage}
                     onChange={(e) => updateShare(index, 'sharePercentage', parseFloat(e.target.value) || 0)}
-                    className="w-20 border-none focus:ring-0 text-sm font-mono"
+                    className="w-20 border-none focus:ring-0 font-mono"
+                    style={{ fontSize: 14, background: "transparent", color: "var(--mist)" }}
                     min="0"
                     max="100"
                   />
                 </td>
                 <td className="px-4 py-2 text-right">
-                  <button onClick={() => removeShare(index)} className="text-red-500 hover:text-red-700 font-bold">
+                  <button onClick={() => removeShare(index)} className="font-bold" style={{ color: "var(--wine-ll)" }}>
                     REMOVE
                   </button>
                 </td>
@@ -301,10 +314,10 @@ export default function StepRights({ onNext, onBack }: any) {
             ))}
           </tbody>
         </table>
-        <div className="p-2 bg-gray-50 border-t">
+        <div className="p-2" style={{ borderTop: "0.5px solid var(--border)" }}>
           <button 
             onClick={addShare}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            className="text-sm font-medium" style={{ color: "var(--gold)", background: "none", border: "none", cursor: "pointer" }}
           >
             + Add Party
           </button>
@@ -313,37 +326,30 @@ export default function StepRights({ onNext, onBack }: any) {
 
       <div className="space-y-2">
         {Object.entries(buckets).map(([role, sum]) => (
-          <div key={role} className={`p-4 rounded-md flex justify-between items-center ${Math.abs(sum - 100) < 0.01 ? 'bg-green-50 text-green-800' : 'bg-yellow-50 text-yellow-800'}`}>
+          <div key={role} className="p-4 rounded-md flex justify-between items-center" style={{
+            background: Math.abs(sum - 100) < 0.01 ? "rgba(93,191,138,0.1)" : "rgba(201,169,110,0.1)",
+            border: `0.5px solid ${Math.abs(sum - 100) < 0.01 ? "rgba(93,191,138,0.3)" : "rgba(201,169,110,0.3)"}`,
+          }}>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${Math.abs(sum - 100) < 0.01 ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-              <span className="font-medium">{role} Total: {sum}%</span>
+              <div style={{ width: 12, height: 12, borderRadius: "50%", background: Math.abs(sum - 100) < 0.01 ? "var(--success)" : "var(--warning)" }}></div>
+              <span className="font-medium" style={{ color: Math.abs(sum - 100) < 0.01 ? "var(--success)" : "var(--warning)" }}>{role} Total: {sum}%</span>
             </div>
-            <span className="text-sm font-bold">{Math.abs(sum - 100) < 0.01 ? 'VALID' : 'INCOMPLETE (Must be 100%)'}</span>
+            <span className="text-sm font-bold" style={{ color: Math.abs(sum - 100) < 0.01 ? "var(--success)" : "var(--warning)" }}>{Math.abs(sum - 100) < 0.01 ? 'VALID' : 'INCOMPLETE (Must be 100%)'}</span>
           </div>
         ))}
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
+        <div className="p-3 text-sm rounded" style={{ background: "rgba(168,56,90,0.1)", border: "0.5px solid rgba(168,56,90,0.3)", color: "var(--wine-ll)" }}>
           {error}
         </div>
       )}
 
       <div className="flex gap-2 pt-4">
-        <button 
-          onClick={onBack} 
-          className="px-6 py-2 border rounded-md hover:bg-gray-50"
-          disabled={isSaving}
-        >
+        <button onClick={onBack} className="btn-ghost" disabled={isSaving}>
           Atrás
         </button>
-        <button 
-          onClick={save} 
-          disabled={!isValid || isSaving}
-          className={`flex-1 px-6 py-2 rounded-md font-bold text-white transition-colors ${
-            !isValid || isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'
-          }`}
-        >
+        <button onClick={save} disabled={!isValid || isSaving} className="btn-primary flex-1">
           {isSaving ? "Guardando..." : "Confirmar Derechos & Continuar"}
         </button>
       </div>

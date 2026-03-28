@@ -94,7 +94,7 @@ export default function StepTracks({ onNext, onBack }: any) {
       <div className="mb-4">
         <label>Título del track:</label>
         <input
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="Título del track"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -105,7 +105,7 @@ export default function StepTracks({ onNext, onBack }: any) {
         <label>Número de track:</label>
         <input
           type="number"
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="1"
           value={trackNumber}
           onChange={(e) => setTrackNumber(Number(e.target.value))}
@@ -115,7 +115,7 @@ export default function StepTracks({ onNext, onBack }: any) {
       <div className="mb-4">
         <label>ISRC:</label>
         <input
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="Ej: QM-ABC-24-00001"
           value={isrc}
           onChange={(e) => setIsrc(e.target.value)}
@@ -144,7 +144,7 @@ export default function StepTracks({ onNext, onBack }: any) {
         />
       </div>
 
-      <button onClick={addTrack} className="px-4 py-2 bg-blue-500 text-white rounded mb-4">
+      <button onClick={addTrack} className="btn-primary mb-4">
         Añadir track
       </button>
 
@@ -152,7 +152,7 @@ export default function StepTracks({ onNext, onBack }: any) {
         <h3 className="text-lg font-semibold">Tracks añadidos:</h3>
         <ul>
           {tracks.map((track, index) => (
-            <li key={index} className="border p-2 mb-2">
+            <li key={index} className="border p-3 mb-2">
               {track.track_number}. {track.title} - {track.duration_seconds}s {track.explicit ? '(Explícito)' : ''}
             </li>
           ))}
@@ -160,10 +160,10 @@ export default function StepTracks({ onNext, onBack }: any) {
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button onClick={onBack} className="px-4 py-2 border rounded">
+        <button onClick={onBack} className="btn-ghost">
           Atrás
         </button>
-        <button onClick={handleNext} className="px-4 py-2 bg-black text-white rounded">
+        <button onClick={handleNext} className="btn-primary">
           Continuar
         </button>
       </div>

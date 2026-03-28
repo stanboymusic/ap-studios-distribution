@@ -3,10 +3,15 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
-from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint, mead, ern_import
+from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint, mead, ern_import, auth
 from app.api import mwn_notifications
 from app.api import analytics
 from app.api import automation
+from app.api.admin_users import router as admin_users_router
+from app.api.contracts import router as contracts_router
+from app.api.contracts import admin_router as admin_contracts_router
+from app.api.royalties import router as royalties_router
+from app.api.admin_royalties import router as admin_royalties_router
 import logging
 from app.core.paths import storage_path
 from app.middleware.tenant import TenantContextMiddleware
@@ -18,6 +23,22 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AP Studios Distribution API v2")
 TenantService.ensure_default_tenant()
+try:
+    from scripts.create_admin import create_admin_if_missing
+
+    create_admin_if_missing()
+except Exception as e:
+    import logging
+
+    logging.getLogger(__name__).warning(f"Admin seed failed: {e}")
+try:
+    from app.database.migrations import run_migrations
+
+    run_migrations()
+except Exception as e:
+    import logging
+
+    logging.getLogger(__name__).warning(f"DB migration skipped: {e}")
 app.add_middleware(TenantContextMiddleware)
 app.add_middleware(AuthContextMiddleware)
 
@@ -96,6 +117,12 @@ async def log_requests(request: Request, call_next):
 app.mount("/assets", StaticFiles(directory=str(storage_path("assets"))), name="assets")
 
 app.include_router(artists.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(admin_users_router, prefix="/api")
+app.include_router(contracts_router, prefix="/api")
+app.include_router(admin_contracts_router, prefix="/api")
+app.include_router(royalties_router, prefix="/api")
+app.include_router(admin_royalties_router, prefix="/api")
 app.include_router(releases.router, prefix="/api")
 app.include_router(tracks.router, prefix="/api")
 app.include_router(assets.router, prefix="/api")

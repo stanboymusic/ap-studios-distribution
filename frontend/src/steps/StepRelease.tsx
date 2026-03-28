@@ -61,7 +61,7 @@ export default function StepRelease({ onNext, onBack }: any) {
       <div className="mt-4">
         <label>Título del lanzamiento:</label>
         <input
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="Título del lanzamiento"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -72,7 +72,7 @@ export default function StepRelease({ onNext, onBack }: any) {
       <div className="mt-4">
         <label>Tipo de release:</label>
         <select
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           aria-label="Tipo de release"
           value={releaseType}
           onChange={(e) => setReleaseType(e.target.value)}
@@ -87,7 +87,7 @@ export default function StepRelease({ onNext, onBack }: any) {
         <label>Fecha de lanzamiento:</label>
         <input
           type="date"
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="YYYY-MM-DD"
           value={originalReleaseDate}
           onChange={(e) => setOriginalReleaseDate(e.target.value)}
@@ -98,7 +98,7 @@ export default function StepRelease({ onNext, onBack }: any) {
       <div className="mt-4">
         <label>Idioma principal:</label>
         <input
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="es"
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
@@ -108,7 +108,7 @@ export default function StepRelease({ onNext, onBack }: any) {
       <div className="mt-4">
         <label>Territorios:</label>
         <input
-          className="border p-2 w-full mt-1"
+          className="border w-full mt-1"
           placeholder="Worldwide"
           value={territories}
           onChange={(e) => setTerritories(e.target.value)}
@@ -116,10 +116,10 @@ export default function StepRelease({ onNext, onBack }: any) {
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button onClick={onBack} className="px-4 py-2 border rounded">
+        <button onClick={onBack} className="btn-ghost">
           Atrás
         </button>
-        <button onClick={save} className="px-4 py-2 bg-black text-white rounded">
+        <button onClick={save} className="btn-primary">
           Guardar y continuar
         </button>
       </div>
