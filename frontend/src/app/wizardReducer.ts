@@ -13,7 +13,8 @@ export type WizardAction =
   | { type: "SET_FIELD"; field: string; value: any };
 
 export function wizardReducer(state: ReleaseDraft, action: WizardAction) {
-  console.log('[Wizard Action]', action.type, 'field' in action ? (action as any).field : '', action.payload ?? ('value' in action ? (action as any).value : ''));
+  const debugValue = 'payload' in action ? action.payload : ('value' in action ? action.value : '');
+  console.log('[Wizard Action]', action.type, 'field' in action ? (action as any).field : '', debugValue);
   switch (action.type) {
     case "INIT":
       return action.payload;

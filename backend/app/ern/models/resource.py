@@ -1,6 +1,7 @@
 from pydantic import BaseModel, field_validator
 from typing import List, Optional, Union
 
+
 class Resource(BaseModel):
     internal_id: str
     type: str  # SoundRecording, Image, Video
@@ -11,6 +12,11 @@ class Resource(BaseModel):
     artists: List[str] = []
     territories: List[str] = []
     rights: Optional[dict] = None
+    featuring_artists: Optional[List[str]] = None
+    producer: Optional[str] = None
+    composer: Optional[str] = None
+    remixer: Optional[str] = None
+    publishing: Optional[dict] = None
 
     @field_validator('duration_seconds')
     @classmethod

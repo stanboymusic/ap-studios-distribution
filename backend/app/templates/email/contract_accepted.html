@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><span class="card-header-icon">📋</span><h1>Contrato firmado</h1><p>Tu aceptación ha quedado registrada</p></div>
+  <div class="card-body">
+    <p class="greeting">Hola {{ artist_name }},</p>
+    <p class="message">Has aceptado los Términos y Condiciones de Distribución de AP Studios.</p>
+    <table class="data-table">
+      <tr><td>Versión del contrato</td><td>v{{ version }}</td></tr>
+      <tr><td>Fecha de aceptación</td><td>{{ accepted_at }}</td></tr>
+      <tr><td>IP registrada</td><td>{{ ip_address | default('No disponible') }}</td></tr>
+      <tr><td>Comisión acordada</td><td>15% sobre royalties brutos</td></tr>
+    </table>
+    <div style="text-align:center;margin-top:20px"><a href="{{ frontend_url }}/artist/new" class="cta-button">Crear mi primera release →</a></div>
+  </div>
+</div>
+{% endblock %}

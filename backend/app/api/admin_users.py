@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.repositories import user_repository as user_repo
 from app.services.catalog_service import CatalogService
+from app.services.notification_service import notify_account_status_changed
 
 router = APIRouter(prefix="/admin/users", tags=["Admin - Users"])
 
@@ -142,6 +143,13 @@ def patch_user(user_id: str, body: PatchUserRequest, request: Request):
     updated = user_repo.update(user_id, updates, tenant_id)
     if not updated:
         raise HTTPException(status_code=500, detail="Update failed")
+
+    if body.is_active is not None and body.is_active != user.is_active:
+        notify_account_status_changed(
+            email=updated.email,
+            artist_name=updated.email.split("@")[0],
+            is_active=updated.is_active,
+        )
 
     return _enrich_user(updated, tenant_id)
 

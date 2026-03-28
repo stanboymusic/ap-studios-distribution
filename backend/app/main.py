@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
-from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint, mead, ern_import, auth
+from app.api import artists, releases, tracks, validation, assets, delivery, rights, dsr, catalog, sandbox, dsp, tenants, mwn, fingerprint, mead, ern_import, auth, notifications
 from app.api import mwn_notifications
 from app.api import analytics
 from app.api import automation
@@ -142,6 +142,7 @@ app.include_router(dsr.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
 app.include_router(automation.router, prefix="/api")
 app.include_router(fingerprint.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 
 @app.get("/")
 def root():

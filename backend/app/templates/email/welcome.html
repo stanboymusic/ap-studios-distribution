@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-header-icon">🎵</span>
+    <h1>Bienvenido a AP Studios</h1>
+    <p>Tu cuenta de artista ha sido creada exitosamente</p>
+  </div>
+  <div class="card-body">
+    <p class="greeting">Hola {{ artist_name }},</p>
+    <p class="message">
+      {{ custom_message or "Tu cuenta en AP Studios Distribution está lista. Ya puedes subir tus primeras releases y distribuir tu música a más de 150 plataformas digitales a nivel mundial." }}
+    </p>
+
+    <div class="highlight-box">
+      <div class="highlight-label">Tu email registrado</div>
+      <div class="highlight-value">{{ email }}</div>
+    </div>
+
+    <div class="highlight-box">
+      <div class="highlight-label">Próximo paso</div>
+      <div class="highlight-value" style="font-size:15px;color:#C8B8CC;">
+        Acepta los términos de distribución y crea tu primera release
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px">
+      <a href="{{ frontend_url }}/artist" class="cta-button">Ir a mi portal →</a>
+    </div>
+
+    <p class="message" style="margin-top:20px;font-size:13px;">
+      AP Studios cobra una comisión del <strong style="color:#E8C98A">15%</strong>
+      sobre los royalties recibidos de los DSPs. El 85% restante es tuyo.
+    </p>
+  </div>
+</div>
+{% endblock %}

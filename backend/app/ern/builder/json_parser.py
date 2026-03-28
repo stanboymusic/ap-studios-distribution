@@ -36,7 +36,7 @@ class ErnJsonParser:
             if 'duration_seconds' in res_data and res_data['duration_seconds'] is not None:
                 res_data['duration_seconds'] = int(float(res_data['duration_seconds']))
             
-            allowed_res_fields = {'type', 'title', 'duration_seconds', 'isrc', 'file', 'artists', 'territories', 'rights'}
+            allowed_res_fields = {'type', 'title', 'duration_seconds', 'isrc', 'file', 'artists', 'territories', 'rights', 'featuring_artists', 'producer', 'composer', 'remixer', 'publishing'}
             filtered_res_data = {key: value for key, value in res_data.items() if key in allowed_res_fields}
             resources[k] = Resource(internal_id=k, **filtered_res_data)
             
@@ -53,7 +53,9 @@ class ErnJsonParser:
             release_data['original_release_date'] = release_data.pop('release_date', '')
             release_data['display_artists'] = [release_data.pop('artist', '')]
             release_data['resources'] = release_data.pop('tracks', [])
-            release_data['label'] = 'AP Studios'
+            release_data['label'] = release_data.pop('label_name', release_data.get('label', 'AP Studios'))
+            release_data['genre'] = (release_data.get('genres') or {}).get('primary') or release_data.get('genre')
+            release_data['subgenre'] = (release_data.get('genres') or {}).get('secondary') or release_data.get('subgenre')
             allowed_fields = {
                 'type',
                 'title',
@@ -63,6 +65,19 @@ class ErnJsonParser:
                 'display_artists',
                 'label',
                 'rights',
+                'genre',
+                'subgenre',
+                'c_line',
+                'p_line',
+                'meta_language',
+                'product_version',
+                'product_code',
+                'sale_date',
+                'preorder_date',
+                'preorder_previewable',
+                'excluded_territories',
+                'album_price',
+                'track_price',
             }
             release_data = {key: value for key, value in release_data.items() if key in allowed_fields}
             releases[k] = Release(internal_id=k, **release_data)

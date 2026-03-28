@@ -19,7 +19,7 @@ def build_message_header(parent, ctx, ns):
 
     sender = sub(mh, "MessageSender", ns=ns)
     sub(sender, "PartyId", ctx.sender.party_id, ns=ns)
-    sub(sender, "PartyName", ctx.sender.name, ns=ns)
+    sub(sender, "PartyName", ctx.sender.name or "AP Studios", ns=ns)
 
     recipient = sub(mh, "MessageRecipient", ns=ns)
     sub(recipient, "PartyId", ctx.recipient.party_id, ns=ns)

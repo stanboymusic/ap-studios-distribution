@@ -20,10 +20,6 @@ def _get_release_field(release, key: str):
 
 
 def validate_upc_for_ern(upc: str | None, release_id: str | None = None) -> str:
-    """
-    Validate UPC for ERN serialization (12 digits, valid checksum).
-    Returns cleaned UPC or raises ERNBuildError.
-    """
     candidate = (upc or "").strip()
     if not candidate:
         raise ERNBuildError("UPC is required to build an ERN message")
@@ -52,6 +48,7 @@ def validate_upc_for_ern(upc: str | None, release_id: str | None = None) -> str:
 
     return candidate
 
+
 def build_release_list(parent, releases, registry, ns):
     rl = sub(parent, "ReleaseList", ns=ns)
 
@@ -60,29 +57,49 @@ def build_release_list(parent, releases, registry, ns):
         ref = registry.release_ref(r.internal_id)
 
         sub(rel, "ReleaseReference", ref, ns=ns)
-        
+
         rel_id = sub(rel, "ReleaseId", ns=ns)
-        release_id = (
-            _get_release_field(r, "id")
-            or _get_release_field(r, "internal_id")
-            or "unknown"
-        )
+        release_id = _get_release_field(r, "id") or _get_release_field(r, "internal_id") or "unknown"
         upc_raw = _get_release_field(r, "upc") or _get_release_field(r, "release_upc")
         if not upc_raw:
-            raise ERNBuildError(
-                f"Release {release_id} has no UPC assigned. ERN requires a valid ICPN."
-            )
+            raise ERNBuildError(f"Release {release_id} has no UPC assigned. ERN requires a valid ICPN.")
         upc = validate_upc_for_ern(str(upc_raw), str(release_id))
         sub(rel_id, "ICPN", upc, ns=ns)
 
         sub(rel, "ReleaseType", r.type, ns=ns)
-        
+
         title = sub(rel, "Title", ns=ns)
         sub(title, "TitleText", r.title, ns=ns)
 
+        if getattr(r, "product_version", None):
+            sub(title, "SubTitle", r.product_version, ns=ns)
+
+        label_name = getattr(r, "label", None) or "AP Studios"
+        label = sub(rel, "LabelName", ns=ns)
+        sub(label, "FullName", label_name, ns=ns)
+
+        genre = getattr(r, "genre", None)
+        subgenre = getattr(r, "subgenre", None)
+        if genre or subgenre:
+            gnode = sub(rel, "Genre", ns=ns)
+            if genre:
+                sub(gnode, "GenreText", genre, ns=ns)
+            if subgenre:
+                sub(gnode, "SubGenre", subgenre, ns=ns)
+
+        if getattr(r, "meta_language", None):
+            sub(rel, "MetadataLanguageAndScriptCode", r.meta_language, ns=ns)
+
+        if getattr(r, "c_line", None):
+            c_line = sub(rel, "CLine", ns=ns)
+            sub(c_line, "CLineText", r.c_line, ns=ns)
+
+        if getattr(r, "p_line", None):
+            p_line = sub(rel, "PLine", ns=ns)
+            sub(p_line, "PLineText", r.p_line, ns=ns)
+
         sub(rel, "OriginalReleaseDate", r.original_release_date, ns=ns)
 
-        # Add Rights Controllers if available
         if r.rights and "shares" in r.rights:
             for share in r.rights["shares"]:
                 rc = sub(rel, "ReleaseRightsController", ns=ns)
@@ -92,5 +109,4 @@ def build_release_list(parent, releases, registry, ns):
 
         res_ref_list = sub(rel, "ReleaseResourceReferenceList", ns=ns)
         for res_id in r.resources:
-            sub(res_ref_list, "ReleaseResourceReference",
-                registry.resource_ref(res_id), ns=ns)
+            sub(res_ref_list, "ReleaseResourceReference", registry.resource_ref(res_id), ns=ns)
