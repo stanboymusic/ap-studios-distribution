@@ -50,6 +50,66 @@ def notify_admin_new_artist(artist_email: str, registered_at: str, tenant_id: st
         },
     ))
 
+def notify_release_delivered(email: str, artist_name: str, release_title: str, release_type: str, upc: Optional[str], release_date: Optional[str], territories: str):
+    _fire(send_template_email(
+        to_email=email,
+        subject=f"🚀 Release entregada: {release_title}",
+        template_name="release_delivered.html",
+        context={
+            "artist_name": artist_name,
+            "release_title": release_title,
+            "release_type": release_type,
+            "upc": upc,
+            "release_date": _fmt_date(release_date) if release_date else None,
+            "territories": territories,
+        },
+    ))
+
+def notify_royalties_available(email: str, artist_name: str, period: str, streams: int, gross_amount: float, net_amount: float, commission_amount: float, available_balance: float, top_dsp: str):
+    _fire(send_template_email(
+        to_email=email,
+        subject=f"💰 Nuevos royalties disponibles: {period}",
+        template_name="royalties_available.html",
+        context={
+            "artist_name": artist_name,
+            "period": period,
+            "streams": streams,
+            "gross_amount": f"{gross_amount:.2f}",
+            "net_amount": f"{net_amount:.2f}",
+            "commission_amount": f"{commission_amount:.2f}",
+            "available_balance": f"{available_balance:.2f}",
+            "top_dsp": top_dsp,
+        },
+    ))
+
+def notify_payout_created(email: str, artist_name: str, amount: float, currency: str, method: str, note: Optional[str]):
+    _fire(send_template_email(
+        to_email=email,
+        subject="⏳ Pago en proceso",
+        template_name="payout_created.html",
+        context={
+            "artist_name": artist_name,
+            "amount": f"{amount:.2f}",
+            "currency": currency,
+            "method": method,
+            "note": note,
+        },
+    ))
+
+def notify_payout_processed(email: str, artist_name: str, amount: float, currency: str, method: str, reference: str, paid_at: str):
+    _fire(send_template_email(
+        to_email=email,
+        subject="✅ Pago enviado",
+        template_name="payout_processed.html",
+        context={
+            "artist_name": artist_name,
+            "amount": f"{amount:.2f}",
+            "currency": currency,
+            "method": method,
+            "reference": reference,
+            "paid_at": _fmt_date(paid_at),
+        },
+    ))
 def notify_contract_accepted(email: str, artist_name: str, version: str, accepted_at: str, ip_address: Optional[str]):
     _fire(send_template_email(
         to_email=email,

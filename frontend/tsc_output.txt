@@ -1,0 +1,2 @@
+src/app/wizardReducer.ts(16,102): error TS2339: Property 'payload' does not exist on type 'WizardAction'.
+  Property 'payload' does not exist on type '{ type: "SET_FIELD"; field: string; value: any; }'.
