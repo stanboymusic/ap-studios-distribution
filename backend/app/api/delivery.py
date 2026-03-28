@@ -13,6 +13,8 @@ from app.ern.persistence.ern_store import ErnStore
 from app.models.delivery_timeline_event import DeliveryTimelineEvent
 from app.services.delivery_timeline_service import DeliveryTimelineService
 from app.repositories.delivery_repository import list_delivery_packages
+from app.repositories import user_repository as user_repo
+from app.services.notification_service import notify_release_delivered
 from datetime import datetime
 import json
 import logging
@@ -55,6 +57,23 @@ def _update_release_pipeline_status(release_obj, tenant_id: str, status: str):
     release_obj.updated_at = datetime.utcnow().isoformat()
     CatalogService.save_release(release_obj, tenant_id=tenant_id)
 
+
+def _notify_release_delivered(release_obj, tenant_id: str):
+    owner_id = getattr(release_obj, "owner_user_id", None)
+    if not owner_id:
+        return
+    user = user_repo.get_by_id(str(owner_id), tenant_id)
+    if not user:
+        return
+    notify_release_delivered(
+        email=user.email,
+        artist_name=user.email.split("@")[0],
+        release_title=getattr(release_obj, "title", "Untitled Release"),
+        release_type=str(getattr(release_obj, "release_type", "Single")),
+        upc=getattr(release_obj, "upc", None),
+        release_date=getattr(release_obj, "original_release_date", None),
+        territories=", ".join(getattr(release_obj, "territories", []) or ["Worldwide"]),
+    )
 
 def _resolve_release_delivery_assets(release_id: str, release, tenant_id: str) -> tuple[str, list, str]:
     # ERN (prefer generated latest)
@@ -248,6 +267,7 @@ def deliver_via_sftp(request: SFTPDeliveryRequest, http_request: Request):
         release.delivery["delivered_at"] = datetime.utcnow().isoformat()
         release.delivery["manifest"] = manifest
         _update_release_pipeline_status(release, tenant_id=tenant_id, status="DELIVERED")
+        _notify_release_delivered(release, tenant_id)
 
         # Log uploaded
         log_event(
@@ -297,6 +317,7 @@ def deliver_via_sftp(request: SFTPDeliveryRequest, http_request: Request):
                 release.delivery["delivered_at"] = datetime.utcnow().isoformat()
                 release.delivery["manifest"] = build_delivery_manifest(str(dest_path), str(dest_path))
                 _update_release_pipeline_status(release, tenant_id=tenant_id, status="DELIVERED")
+                _notify_release_delivered(release, tenant_id)
                 
                 log_event(
                     release_id=release.id,

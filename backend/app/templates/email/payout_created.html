@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>⏳ Pago en proceso</h2>
+    <p>Estamos procesando tu payout</p>
+  </div>
+  <div class="body">
+    <p>Hola {{ artist_name }},</p>
+
+    <table class="table">
+      <tr><td>Monto</td><td>${{ amount }} {{ currency }}</td></tr>
+      <tr><td>Método</td><td>{{ method | upper }}</td></tr>
+      <tr><td>Estado</td><td>Pendiente</td></tr>
+      {% if note %}<tr><td>Nota</td><td>{{ note }}</td></tr>{% endif %}
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/artist/earnings">Ver pagos</a>
+  </div>
+{% endblock %}

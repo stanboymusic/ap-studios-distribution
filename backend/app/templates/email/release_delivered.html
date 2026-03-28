@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>🚀 Release entregada</h2>
+    <p>Tu música está en camino a los DSPs</p>
+  </div>
+  <div class="body">
+    <p>Hola {{ artist_name }},</p>
+    <p style="margin-top:8px;">Tu release fue enviada exitosamente.</p>
+
+    <table class="table">
+      <tr><td>Título</td><td>{{ release_title }}</td></tr>
+      <tr><td>Tipo</td><td>{{ release_type }}</td></tr>
+      <tr><td>UPC</td><td>{{ upc | default("Pendiente") }}</td></tr>
+      <tr><td>Fecha release</td><td>{{ release_date | default("Por confirmar") }}</td></tr>
+      <tr><td>Territorios</td><td>{{ territories | default("Worldwide") }}</td></tr>
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/artist">Ver releases</a>
+  </div>
+{% endblock %}

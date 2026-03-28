@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>✅ Pago enviado</h2>
+    <p>Tu payout fue procesado</p>
+  </div>
+  <div class="body">
+    <p>Hola {{ artist_name }},</p>
+
+    <table class="table">
+      <tr><td>Monto</td><td>${{ amount }} {{ currency }}</td></tr>
+      <tr><td>Método</td><td>{{ method | upper }}</td></tr>
+      <tr><td>Referencia</td><td>{{ reference }}</td></tr>
+      <tr><td>Fecha</td><td>{{ paid_at }}</td></tr>
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/artist/earnings">Ver historial</a>
+  </div>
+{% endblock %}

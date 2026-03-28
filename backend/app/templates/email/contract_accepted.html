@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="head">
+    <h2>📋 Contrato firmado</h2>
+    <p>Tu aceptación quedó registrada</p>
+  </div>
+  <div class="body">
+    <p>Hola {{ artist_name }},</p>
+    <p style="margin-top:8px;">Has aceptado los términos de distribución de AP Studios.</p>
+
+    <table class="table">
+      <tr><td>Versión</td><td>{{ version }}</td></tr>
+      <tr><td>Fecha</td><td>{{ accepted_at }}</td></tr>
+      <tr><td>IP</td><td>{{ ip_address | default("No disponible") }}</td></tr>
+    </table>
+
+    <a class="btn" href="{{ frontend_url }}/artist/new">Crear release</a>
+  </div>
+{% endblock %}
