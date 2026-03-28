@@ -9,6 +9,8 @@ from pydantic import BaseModel
 
 from app.models.contract import ContractAcceptance, CURRENT_CONTRACT_VERSION
 from app.repositories import contract_repository as contract_repo
+from app.repositories import user_repository as user_repo
+from app.services.notification_service import notify_contract_accepted
 
 router = APIRouter(prefix="/contracts", tags=["Contracts"])
 admin_router = APIRouter(prefix="/admin/contracts", tags=["Admin — Contracts"])
@@ -67,6 +69,16 @@ def accept_contract(body: AcceptContractRequest, request: Request):
         user_agent=user_agent,
     )
     contract_repo.save(contract)
+
+    user = user_repo.get_by_id(user_id, tenant_id)
+    if user:
+        notify_contract_accepted(
+            email=user.email,
+            artist_name=user.email.split("@")[0],
+            version=contract.version,
+            accepted_at=contract.accepted_at,
+            ip_address=contract.ip_address,
+        )
 
     return {
         **contract.to_dict(),

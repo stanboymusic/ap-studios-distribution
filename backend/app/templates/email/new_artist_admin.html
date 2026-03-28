@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><span class="card-header-icon">👤</span><h1>Nuevo artista registrado</h1><p>Alguien se ha unido a AP Studios</p></div>
+  <div class="card-body">
+    <p class="greeting">Hola Admin,</p>
+    <table class="data-table">
+      <tr><td>Email</td><td>{{ artist_email }}</td></tr>
+      <tr><td>Fecha de registro</td><td>{{ registered_at }}</td></tr>
+      <tr><td>Tenant</td><td>{{ tenant_id }}</td></tr>
+      <tr><td>Contrato firmado</td><td>{{ 'Sí' if contract_signed else 'Pendiente' }}</td></tr>
+    </table>
+    <div style="text-align:center;margin-top:20px"><a href="{{ frontend_url }}/admin/users" class="cta-button">Ver en panel admin →</a></div>
+  </div>
+</div>
+{% endblock %}

@@ -39,6 +39,25 @@ class ReleaseDraft:
             "warnings": [],
             "history": []
         }
+        self.featuring_artists: Optional[List[str]] = None
+        self.producer: Optional[str] = None
+        self.composer: Optional[str] = None
+        self.remixer: Optional[str] = None
+        self.genre: Optional[str] = None
+        self.subgenre: Optional[str] = None
+        self.label_name: Optional[str] = None
+        self.c_line: Optional[str] = None
+        self.p_line: Optional[str] = None
+        self.meta_language: Optional[str] = None
+        self.product_version: Optional[str] = None
+        self.product_code: Optional[str] = None
+        self.sale_date: Optional[str] = None
+        self.preorder_date: Optional[str] = None
+        self.preorder_previewable: bool = False
+        self.excluded_territories: Optional[List[str]] = None
+        self.album_price: Optional[str] = None
+        self.track_price: Optional[str] = None
+        self.publishing: Optional[List[dict]] = None
         self.delivery = {
             "status": "not_delivered",  # not_delivered, uploading, uploaded, processing, accepted, rejected
             "connector_id": None,

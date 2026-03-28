@@ -31,6 +31,25 @@ def _to_domain(row: DBRelease) -> ReleaseDraft:
     r.validation = row.validation or {}
     r.delivery = row.delivery or {}
     r.ddex = row.ddex or {}
+    r.featuring_artists = row.validation.get("featuring_artists") if isinstance(row.validation, dict) else None
+    r.producer = row.validation.get("producer") if isinstance(row.validation, dict) else None
+    r.composer = row.validation.get("composer") if isinstance(row.validation, dict) else None
+    r.remixer = row.validation.get("remixer") if isinstance(row.validation, dict) else None
+    r.genre = row.validation.get("genre") if isinstance(row.validation, dict) else None
+    r.subgenre = row.validation.get("subgenre") if isinstance(row.validation, dict) else None
+    r.label_name = row.validation.get("label_name") if isinstance(row.validation, dict) else None
+    r.c_line = row.validation.get("c_line") if isinstance(row.validation, dict) else None
+    r.p_line = row.validation.get("p_line") if isinstance(row.validation, dict) else None
+    r.meta_language = row.validation.get("meta_language") if isinstance(row.validation, dict) else None
+    r.product_version = row.validation.get("product_version") if isinstance(row.validation, dict) else None
+    r.product_code = row.validation.get("product_code") if isinstance(row.validation, dict) else None
+    r.sale_date = row.validation.get("sale_date") if isinstance(row.validation, dict) else None
+    r.preorder_date = row.validation.get("preorder_date") if isinstance(row.validation, dict) else None
+    r.preorder_previewable = (row.validation or {}).get("preorder_previewable", False) if isinstance(row.validation, dict) else False
+    r.excluded_territories = (row.validation or {}).get("excluded_territories") if isinstance(row.validation, dict) else None
+    r.album_price = (row.validation or {}).get("album_price") if isinstance(row.validation, dict) else None
+    r.track_price = (row.validation or {}).get("track_price") if isinstance(row.validation, dict) else None
+    r.publishing = (row.validation or {}).get("publishing") if isinstance(row.validation, dict) else None
     r.tracks = [
         {
             "track_id": t.id,
@@ -83,7 +102,28 @@ def save(release: ReleaseDraft, tenant_id: str, db: Session) -> ReleaseDraft:
         "artist_id": str(release.artist_id) if release.artist_id else None,
         "owner_user_id": release.owner_user_id,
         "artwork_id": str(release.artwork_id) if release.artwork_id else None,
-        "validation": release.validation or {},
+        "validation": {
+            **(release.validation or {}),
+            "featuring_artists": getattr(release, "featuring_artists", None),
+            "producer": getattr(release, "producer", None),
+            "composer": getattr(release, "composer", None),
+            "remixer": getattr(release, "remixer", None),
+            "genre": getattr(release, "genre", None),
+            "subgenre": getattr(release, "subgenre", None),
+            "label_name": getattr(release, "label_name", None),
+            "c_line": getattr(release, "c_line", None),
+            "p_line": getattr(release, "p_line", None),
+            "meta_language": getattr(release, "meta_language", None),
+            "product_version": getattr(release, "product_version", None),
+            "product_code": getattr(release, "product_code", None),
+            "sale_date": getattr(release, "sale_date", None),
+            "preorder_date": getattr(release, "preorder_date", None),
+            "preorder_previewable": getattr(release, "preorder_previewable", False),
+            "excluded_territories": getattr(release, "excluded_territories", None),
+            "album_price": getattr(release, "album_price", None),
+            "track_price": getattr(release, "track_price", None),
+            "publishing": getattr(release, "publishing", None),
+        },
         "delivery": release.delivery or {},
         "ddex": release.ddex or {},
         "tenant_id": tenant_id,

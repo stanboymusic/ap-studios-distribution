@@ -17,6 +17,8 @@ from typing import Optional
 from app.models.royalty import RoyaltyStatement, AP_STUDIOS_COMMISSION_PCT
 from app.repositories import royalty_repo
 from app.services.catalog_service import CatalogService
+from app.repositories import user_repository as user_repo
+from app.services.notification_service import notify_royalties_available
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +219,31 @@ def process_dsr_report(dsr_data: dict, tenant_id: str) -> dict:
     total_net = sum(s.net_amount for s in processed)
     total_gross = sum(s.gross_amount for s in processed)
     ap_commission = sum(s.commission_amount for s in processed)
+
+    # Email notifications per artist (best-effort)
+    if processed:
+        users = {s.user_id for s in processed if getattr(s, "user_id", None)}
+        for uid in users:
+            try:
+                user = user_repo.get_by_id(uid, tenant_id)
+                if not user:
+                    continue
+                artist_stmts = [st for st in processed if st.user_id == uid]
+                balance = royalty_repo.get_balance(uid, tenant_id)
+                notify_royalties_available(
+                    email=user.email,
+                    artist_name=user.email.split("@")[0],
+                    period=period or _normalize_period(period),
+                    streams=sum(st.streams for st in artist_stmts),
+                    gross_amount=sum(st.gross_amount for st in artist_stmts),
+                    net_amount=sum(st.net_amount for st in artist_stmts),
+                    commission_amount=sum(st.commission_amount for st in artist_stmts),
+                    available_balance=balance.get("available_balance", 0.0),
+                    top_dsp=dsp or "Spotify",
+                )
+            except Exception as exc:
+                logger.warning("Failed to notify royalties for user %s: %s", uid, exc)
+
 
     return {
         "dsr_id": dsr_id,

@@ -15,6 +15,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories import user_repository as user_repo
+from app.services.notification_service import notify_admin_new_artist, notify_welcome
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -73,6 +74,15 @@ def register(body: RegisterRequest):
         tenant_id=body.tenant_id,
     )
     user_repo.create(user)
+
+    notify_welcome(email=user.email, artist_name=user.email.split("@")[0])
+    notify_admin_new_artist(
+        artist_email=user.email,
+        registered_at=user.created_at,
+        tenant_id=user.tenant_id,
+        contract_signed=False,
+    )
+
     return _issue_tokens(user)
 
 

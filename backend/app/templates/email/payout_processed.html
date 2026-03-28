@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><span class="card-header-icon">✅</span><h1>Pago enviado</h1><p>Tu pago ha sido procesado exitosamente</p></div>
+  <div class="card-body">
+    <p class="greeting">Hola {{ artist_name }},</p>
+    <div class="highlight-box"><div class="highlight-label">Monto enviado</div><div class="highlight-value green">${{ amount }} {{ currency }}</div></div>
+    <table class="data-table">
+      <tr><td>Método</td><td>{{ method | upper }}</td></tr>
+      <tr><td>Referencia</td><td style="color:#E8C98A">{{ reference }}</td></tr>
+      <tr><td>Fecha de pago</td><td>{{ paid_at }}</td></tr>
+      <tr><td>Estado</td><td style="color:#5DBF8A">✓ Pagado</td></tr>
+    </table>
+    <div style="text-align:center;margin-top:20px"><a href="{{ frontend_url }}/artist/earnings" class="cta-button">Ver historial de pagos →</a></div>
+  </div>
+</div>
+{% endblock %}

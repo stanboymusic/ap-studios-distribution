@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><span class="card-header-icon">⏳</span><h1>Pago en proceso</h1><p>AP Studios está procesando tu pago</p></div>
+  <div class="card-body">
+    <p class="greeting">Hola {{ artist_name }},</p>
+    <div class="highlight-box"><div class="highlight-label">Monto a recibir</div><div class="highlight-value gold">${{ amount }} {{ currency }}</div></div>
+    <table class="data-table">
+      <tr><td>Método de pago</td><td>{{ method | upper }}</td></tr>
+      <tr><td>Estado</td><td style="color:#E8C98A">Pendiente</td></tr>
+      {% if note %}<tr><td>Nota</td><td>{{ note }}</td></tr>{% endif %}
+    </table>
+    <div style="text-align:center;margin-top:20px"><a href="{{ frontend_url }}/artist/earnings" class="cta-button">Ver mis pagos →</a></div>
+  </div>
+</div>
+{% endblock %}
