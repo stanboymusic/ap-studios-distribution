@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.paths import STORAGE_DIR
+from app.core.paths import STORAGE_DIR, is_valid_tenant_id
 from app.services.catalog_service import CatalogService
 
 
@@ -26,6 +26,9 @@ def run(apply: bool) -> None:
         return
     for tdir in sorted(p for p in tenants_dir.iterdir() if p.is_dir()):
         tenant = tdir.name
+        if not is_valid_tenant_id(tenant):
+            print(f"[{tenant}] ignorado: tenant_id inválido")
+            continue
         releases = CatalogService.get_releases(tenant_id=tenant)
         artist_owners: dict[str, set] = {}
         art_owners: dict[str, set] = {}
