@@ -7,7 +7,11 @@ from app.core.paths import storage_path
 from app.catalog.catalog_service import create_track as create_catalog_track
 from app.fingerprinting.fingerprint_service import process_audio_fingerprint
 from app.services.catalog_service import CatalogService
-from app.core.auth import ensure_release_access
+from app.core.auth import ensure_authenticated, ensure_release_access
+from pathlib import Path
+
+MAX_AUDIO_BYTES = 600 * 1024 * 1024
+ALLOWED_AUDIO_EXT = {".wav", ".flac"}
 
 router = APIRouter(prefix="/tracks", tags=["Tracks"])
 
@@ -64,6 +68,7 @@ async def create_track(
     audio: UploadFile = File(...)
 ):
     tenant_id = request.state.tenant_id
+    uid = ensure_authenticated(request)
     rid = (release_id or "").strip()
     try:
         release_uuid = UUID(rid)
@@ -87,8 +92,15 @@ async def create_track(
 
     resolved_isrc = track_identity["isrc"]
 
-    # Read audio bytes
-    audio_bytes = await audio.read()
+    # Extensión validada ANTES de guardar nada (antes se aceptaba cualquiera: .html, .php, ...)
+    extension = Path(audio.filename or "").suffix.lower()
+    if extension not in ALLOWED_AUDIO_EXT:
+        raise HTTPException(status_code=400, detail="Only WAV or FLAC files are allowed")
+
+    # Read audio bytes (con tope de tamaño)
+    audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Audio file too large")
 
     # Generate track_id
     track_uuid = uuid4()
@@ -97,8 +109,7 @@ async def create_track(
     # Save file to storage
     directory = storage_path("audio")
     directory.mkdir(parents=True, exist_ok=True)
-    extension = audio.filename.split('.')[-1] if '.' in audio.filename else 'wav'
-    file_path = directory / f"{track_uuid}.{extension}"
+    file_path = directory / f"{track_uuid}{extension}"
     with open(file_path, "wb") as buffer:
         buffer.write(audio_bytes)
 
@@ -108,10 +119,10 @@ async def create_track(
         audio_info = MutagenFile(str(file_path))
         if audio_info and audio_info.info:
             duration = round(audio_info.info.length, 2)
-    except Exception as e:
-        print(f"DEBUG: Mutagen error: {e}")
+    except Exception:
+        pass
 
-    if duration is None and audio.filename.lower().endswith('.wav'):
+    if duration is None and extension == ".wav":
         duration = get_wav_duration_manual(str(file_path))
 
     if duration is None:
@@ -155,6 +166,7 @@ async def create_track(
         "duration": duration,
         "title": title,
         "isrc": resolved_isrc,
+        "owner_user_id": uid,
         "fingerprint": {
             "id": fingerprint_result["fingerprint_id"],
             "hash": fingerprint_result["fingerprint"],
@@ -199,6 +211,7 @@ async def create_track(
             "id": fingerprint_result["fingerprint_id"],
             "hash": fingerprint_result["fingerprint"],
         },
-        "file_path": str(file_path),
+        # Solo el nombre del archivo (sin la ruta interna del servidor).
+        "file_name": file_path.name,
         "status": "ok"
     }

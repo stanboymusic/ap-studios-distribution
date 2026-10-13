@@ -10,21 +10,64 @@ from mutagen import File as MutagenFile
 import shutil
 from app.core.paths import storage_path
 from app.fingerprinting.fingerprint_service import process_audio_fingerprint
-from app.core.auth import ensure_release_access
+from app.core.auth import (
+    artist_accessible,
+    ensure_authenticated,
+    ensure_release_access,
+    is_admin,
+)
+import re
+import uuid as _uuid
+from pathlib import Path
 from app.repositories import catalog_repository
 from app.repositories import contract_repository as contract_repo
 
 router = APIRouter(prefix="/releases", tags=["Releases"])
 
+MAX_AUDIO_BYTES = 600 * 1024 * 1024  # 600 MB por archivo de audio
+ALLOWED_AUDIO_EXT = {".wav", ".flac"}
+
+
+def _public_release(data: dict, request: Request) -> dict:
+    """El artista no necesita (ni debe ver) rutas internas del servidor."""
+    if is_admin(request):
+        return data
+    out = dict(data)
+    out.pop("track_file", None)
+    tracks = []
+    for t in out.get("tracks") or []:
+        if isinstance(t, dict):
+            t = {k: v for k, v in t.items() if k != "file_path"}
+        tracks.append(t)
+    if "tracks" in out:
+        out["tracks"] = tracks
+    return out
+
+
+def _ensure_artist_usable(request: Request, artist_id, tenant_id: str) -> None:
+    artist = CatalogService.get_artist_by_id(artist_id, tenant_id=tenant_id)
+    # Mismo error exista o no (no revelar artistas ajenos).
+    if not artist or not artist_accessible(request, artist, tenant_id):
+        raise HTTPException(status_code=400, detail="artist_id does not exist")
+
+
+def _ensure_artwork_usable(request: Request, artwork_id, tenant_id: str) -> None:
+    asset = CatalogService.get_asset_by_id(str(artwork_id), tenant_id=tenant_id)
+    if not asset or asset.get("type") != "artwork":
+        raise HTTPException(status_code=400, detail="artwork_id does not exist")
+    if is_admin(request):
+        return
+    if (asset.get("owner_user_id") or "") != ensure_authenticated(request):
+        raise HTTPException(status_code=400, detail="artwork_id does not exist")
+
+
 @router.post("/", response_model=ReleaseResponse)
 def create_release(data: ReleaseCreate, request: Request):
-    user_id = getattr(request.state, "user_id", None)
-    user_role = getattr(request.state, "user_role", "artist")
-    tenant_id = getattr(request.state, "tenant_id", "default")
+    user_id = ensure_authenticated(request)
+    tenant_id = request.state.tenant_id
 
-    # Admin no necesita contrato
-    # Artistas sin contrato no pueden crear releases
-    if user_role != "admin" and user_id and not user_id.endswith(":anonymous"):
+    # Admin/staff no necesitan contrato; los artistas deben haber aceptado los términos.
+    if not is_admin(request):
         if not contract_repo.has_accepted(user_id, tenant_id):
             raise HTTPException(
                 status_code=403,
@@ -32,10 +75,8 @@ def create_release(data: ReleaseCreate, request: Request):
                        "before creating releases. Go to /artist/contract.",
             )
 
-    print("DEBUG: create_release called with data:", data.dict())
-
-    if data.artist_id and not CatalogService.get_artist_by_id(data.artist_id, tenant_id=tenant_id):
-        raise HTTPException(status_code=400, detail="artist_id does not exist")
+    if data.artist_id:
+        _ensure_artist_usable(request, data.artist_id, tenant_id)
 
     release = ReleaseDraft()
     release.title = data.title
@@ -44,12 +85,8 @@ def create_release(data: ReleaseCreate, request: Request):
     release.language = data.language
     release.territories = data.territories
     release.artist_id = data.artist_id
-    # Extraer user_id del JWT (seteado por AuthContextMiddleware)
-    owner_user_id = getattr(request.state, "user_id", None)
-    # No guardar el anonymous placeholder
-    if owner_user_id and owner_user_id.endswith(":anonymous"):
-        owner_user_id = None
-    release.owner_user_id = owner_user_id
+    # Propietario = usuario del JWT (nunca un valor enviado por el cliente)
+    release.owner_user_id = user_id
     try:
         release_identity = create_catalog_release(
             title=data.title,
@@ -77,21 +114,12 @@ def create_release(data: ReleaseCreate, request: Request):
 def list_releases(request: Request):
     tenant_id = request.state.tenant_id
     releases = CatalogService.get_releases(tenant_id=tenant_id)
-    user_id = getattr(request.state, "user_id", None)
-    user_role = getattr(request.state, "user_role", "artist")
-    if user_role != "admin":
-        if user_id and not user_id.endswith(":anonymous"):
-            releases = [
-                r
-                for r in releases
-                if getattr(r, "owner_user_id", None) == user_id
-            ]
-        else:
-            releases = []
+    if not is_admin(request):
+        user_id = ensure_authenticated(request)
+        releases = [r for r in releases if getattr(r, "owner_user_id", None) == user_id]
     artists = CatalogService.get_artists(tenant_id=tenant_id)
     artist_map = {a.id: a.name for a in artists}
-    
-    print("DEBUG: list_releases called, returning", len(releases), "releases")
+
     return [
         ReleaseResponse(
             id=r.id,
@@ -108,39 +136,33 @@ def list_releases(request: Request):
 @router.get("/{release_id}")
 def get_release(release_id: UUID, request: Request):
     tenant_id = request.state.tenant_id
-    user_id = getattr(request.state, "user_id", None)
-    user_role = getattr(request.state, "user_role", "artist")
 
     release = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
     if not release:
         raise HTTPException(status_code=404, detail="Release not found")
 
-    if user_role != "admin":
-        release_owner = getattr(release, "owner_user_id", None)
-        if release_owner != user_id:
+    # Ajeno => 404 (no revelar que existe)
+    if not is_admin(request):
+        if getattr(release, "owner_user_id", None) != ensure_authenticated(request):
             raise HTTPException(status_code=404, detail="Release not found")
 
-    return release.to_dict()
+    return _public_release(release.to_dict(), request)
 
 @router.put("/{release_id}")
 def update_release(release_id: UUID, payload: ReleaseUpdate, request: Request):
     tenant_id = request.state.tenant_id
-    owner_user_id = getattr(request.state, "user_id", None)
-    user_role = getattr(request.state, "user_role", "artist")
 
     existing = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Release not found")
+    if not is_admin(request) and getattr(existing, "owner_user_id", None) != ensure_authenticated(request):
+        raise HTTPException(status_code=403, detail="You can only modify your own releases")
 
-    # Admin puede editar cualquier release
-    # Artista solo puede editar las suyas
-    if user_role != "admin":
-        if owner_user_id and existing.owner_user_id:
-            if existing.owner_user_id != owner_user_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="You can only edit your own releases",
-                )
+    # Datos que apuntan a otros recursos: deben ser del propio usuario.
+    if payload.artist_id:
+        _ensure_artist_usable(request, payload.artist_id, tenant_id)
+    if payload.artwork_id:
+        _ensure_artwork_usable(request, payload.artwork_id, tenant_id)
 
     release = existing
     if payload.upc:
@@ -162,25 +184,17 @@ def update_release(release_id: UUID, payload: ReleaseUpdate, request: Request):
         release.artist_id = payload.artist_id
     
     CatalogService.save_release(release, tenant_id=tenant_id)
-    return release.to_dict()
+    return _public_release(release.to_dict(), request)
 
 @router.delete("/{release_id}")
 def delete_release(release_id: UUID, request: Request):
     tenant_id = request.state.tenant_id
-    owner_user_id = getattr(request.state, "user_id", None)
-    user_role = getattr(request.state, "user_role", "artist")
 
     existing = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Release not found")
-
-    if user_role != "admin":
-        if owner_user_id and existing.owner_user_id:
-            if existing.owner_user_id != owner_user_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="You can only delete your own releases",
-                )
+    if not is_admin(request) and getattr(existing, "owner_user_id", None) != ensure_authenticated(request):
+        raise HTTPException(status_code=403, detail="You can only modify your own releases")
 
     deleted = catalog_repository.delete_release(tenant_id, str(release_id))
     if not deleted:
@@ -198,8 +212,9 @@ def upload_audio(
     release = CatalogService.get_release_by_id(release_id, tenant_id=tenant_id)
     if release:
         ensure_release_access(request, release)
-        # Validar extensión
-        if not file.filename.lower().endswith((".wav", ".flac")):
+        # Validar extensión (solo del nombre; el contenido se verifica con mutagen más abajo)
+        ext = Path(file.filename or "").suffix.lower()
+        if ext not in ALLOWED_AUDIO_EXT:
             raise HTTPException(
                 status_code=400,
                 detail="Only WAV or FLAC files are allowed"
@@ -209,14 +224,25 @@ def upload_audio(
         directory = storage_path("audio")
         directory.mkdir(parents=True, exist_ok=True)
 
-        # Guardar archivo
-        file_path = directory / f"{release.id}_{file.filename}"
+        # Nombre generado por el servidor: el nombre del cliente nunca forma parte de la ruta.
+        file_path = directory / f"{release.id}_{_uuid.uuid4().hex}{ext}"
+        written = 0
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            while True:
+                chunk = file.file.read(1024 * 1024)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > MAX_AUDIO_BYTES:
+                    buffer.close()
+                    file_path.unlink(missing_ok=True)
+                    raise HTTPException(status_code=413, detail="Audio file too large")
+                buffer.write(chunk)
 
         # Leer duración
         audio = MutagenFile(str(file_path))
         if audio is None or not audio.info:
+            file_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=400,
                 detail="Unable to read audio file"
@@ -285,7 +311,7 @@ def upload_audio(
         return {
             "message": "Audio uploaded successfully",
             "duration": duration_seconds,
-            "file": file.filename,
+            "file": Path(file.filename or "").name,
             "fingerprint": {
                 "id": fingerprint_result["fingerprint_id"],
                 "hash": fingerprint_result["fingerprint"],

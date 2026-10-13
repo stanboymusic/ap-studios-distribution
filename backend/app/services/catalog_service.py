@@ -6,6 +6,7 @@ from datetime import date, datetime
 from app.models.release import ReleaseDraft
 from app.models.artist import Artist
 from app.core.paths import tenant_path, storage_path
+from app.core.filelock import atomic_write_json, read_json, update_json
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -45,24 +46,31 @@ class CatalogService:
         base.mkdir(parents=True, exist_ok=True)
         files = CatalogService._files(tenant_id)
         for file in files.values():
-            if not file.exists():
-                with open(file, "w", encoding="utf-8") as f:
-                    json.dump([], f)
+            # Creación exclusiva: jamás pisa un archivo que otro hilo/proceso ya creó.
+            try:
+                with open(file, "x", encoding="utf-8") as f:
+                    f.write("[]")
+            except FileExistsError:
+                pass
 
     @staticmethod
     def _load_json(file_path: Path, tenant_id: str) -> List[Dict[str, Any]]:
         CatalogService._ensure_catalog(tenant_id)
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
+        # Si el archivo está corrupto lanza StorageCorruptionError (antes devolvía []
+        # y el siguiente guardado borraba todo el catálogo).
+        return read_json(file_path, list)
 
     @staticmethod
     def _save_json(file_path: Path, data: List[Dict[str, Any]], tenant_id: str):
         CatalogService._ensure_catalog(tenant_id)
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, default=json_serial)
+        atomic_write_json(file_path, data, default=json_serial, indent=4)
+
+    @staticmethod
+    def _update(tenant_id: str, key: str, mutator):
+        """Lectura-modificación-escritura atómica y con lock (hilos y procesos)."""
+        CatalogService._ensure_catalog(tenant_id)
+        path = CatalogService._files(tenant_id)[key]
+        return update_json(path, mutator, default_factory=list, default=json_serial)
 
     # --- Artist Methods ---
     @staticmethod
@@ -84,14 +92,14 @@ class CatalogService:
 
     @staticmethod
     def save_artist(artist: Artist, tenant_id: str = "default"):
-        files = CatalogService._files(tenant_id)
-        artists = CatalogService._load_json(files["artists"], tenant_id)
-        existing = next((i for i, a in enumerate(artists) if a["id"] == str(artist.id)), None)
-        if existing is not None:
-            artists[existing] = artist.to_dict()
-        else:
-            artists.append(artist.to_dict())
-        CatalogService._save_json(files["artists"], artists, tenant_id)
+        def _mut(artists):
+            existing = next((i for i, a in enumerate(artists) if a["id"] == str(artist.id)), None)
+            if existing is not None:
+                artists[existing] = artist.to_dict()
+            else:
+                artists.append(artist.to_dict())
+
+        CatalogService._update(tenant_id, "artists", _mut)
 
     @staticmethod
     def get_artist_by_id(artist_id: UUID, tenant_id: str = "default") -> Optional[Artist]:
@@ -129,14 +137,14 @@ class CatalogService:
 
     @staticmethod
     def save_release(release: ReleaseDraft, tenant_id: str = "default"):
-        files = CatalogService._files(tenant_id)
-        releases = CatalogService._load_json(files["releases"], tenant_id)
-        existing = next((i for i, r in enumerate(releases) if r["id"] == str(release.id)), None)
-        if existing is not None:
-            releases[existing] = release.to_dict()
-        else:
-            releases.append(release.to_dict())
-        CatalogService._save_json(files["releases"], releases, tenant_id)
+        def _mut(releases):
+            existing = next((i for i, r in enumerate(releases) if r["id"] == str(release.id)), None)
+            if existing is not None:
+                releases[existing] = release.to_dict()
+            else:
+                releases.append(release.to_dict())
+
+        CatalogService._update(tenant_id, "releases", _mut)
 
     @staticmethod
     def get_release_by_id(release_id: UUID, tenant_id: str = "default") -> Optional[ReleaseDraft]:
@@ -162,14 +170,14 @@ class CatalogService:
 
     @staticmethod
     def save_asset(asset_data: Dict[str, Any], tenant_id: str = "default"):
-        files = CatalogService._files(tenant_id)
-        assets = CatalogService._load_json(files["assets"], tenant_id)
-        existing = next((i for i, a in enumerate(assets) if a["id"] == asset_data["id"]), None)
-        if existing is not None:
-            assets[existing] = asset_data
-        else:
-            assets.append(asset_data)
-        CatalogService._save_json(files["assets"], assets, tenant_id)
+        def _mut(assets):
+            existing = next((i for i, a in enumerate(assets) if a["id"] == asset_data["id"]), None)
+            if existing is not None:
+                assets[existing] = asset_data
+            else:
+                assets.append(asset_data)
+
+        CatalogService._update(tenant_id, "assets", _mut)
 
     @staticmethod
     def get_asset_by_id(asset_id: str, tenant_id: str = "default") -> Optional[Dict[str, Any]]:
@@ -201,7 +209,16 @@ class CatalogService:
 
     @staticmethod
     def save_delivery_event(event_data: Dict[str, Any], tenant_id: str = "default"):
-        files = CatalogService._files(tenant_id)
-        events = CatalogService._load_json(files["delivery_events"], tenant_id)
-        events.append(event_data)
-        CatalogService._save_json(files["delivery_events"], events, tenant_id)
+        CatalogService._update(tenant_id, "delivery_events", lambda events: events.append(event_data))
+
+    # --- Delete ---
+    @staticmethod
+    def delete_release(release_id, tenant_id: str = "default") -> bool:
+        rid = str(release_id)
+
+        def _mut(releases):
+            before = len(releases)
+            releases[:] = [r for r in releases if str(r.get("id")) != rid]
+            return len(releases) != before
+
+        return CatalogService._update(tenant_id, "releases", _mut)

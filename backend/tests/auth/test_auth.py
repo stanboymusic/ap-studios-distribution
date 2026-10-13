@@ -92,12 +92,12 @@ def test_login_returns_tokens():
     client.post(
         "/api/auth/register",
         headers={"X-Tenant-Id": "default"},
-        json={"email": email, "password": "pass123", "role": "artist", "tenant_id": "default"},
+        json={"email": email, "password": "pass12345", "role": "artist", "tenant_id": "default"},
     )
     resp = client.post(
         "/api/auth/login",
         headers={"X-Tenant-Id": "default"},
-        json={"email": email, "password": "pass123", "tenant_id": "default"},
+        json={"email": email, "password": "pass12345", "tenant_id": "default"},
     )
     assert resp.status_code == 200
     assert "access_token" in resp.json()
@@ -136,7 +136,7 @@ def test_me_con_token_valido():
     reg = client.post(
         "/api/auth/register",
         headers={"X-Tenant-Id": "default"},
-        json={"email": email, "password": "pass123", "role": "artist", "tenant_id": "default"},
+        json={"email": email, "password": "pass12345", "role": "artist", "tenant_id": "default"},
     )
     token = reg.json()["access_token"]
     resp = client.get(

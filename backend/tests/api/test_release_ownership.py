@@ -2,21 +2,20 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from app.core.security import create_access_token
 from app.main import app
+from tests.helpers import make_user
 
 client = TestClient(app)
 
 
-def make_token(user_id: str, role: str = "artist", tenant: str = "default") -> str:
-    return create_access_token(
-        {
-            "sub": user_id,
-            "role": role,
-            "tenant_id": tenant,
-            "email": f"{user_id}@test.io",
-        }
-    )
+def make_token(user_id: str | None = None, role: str = "artist", tenant: str = "default") -> str:
+    """Crea un usuario REAL en el almacén y devuelve su token (el middleware lo verifica)."""
+    if user_id is not None:
+        try:
+            uuid.UUID(user_id)
+        except ValueError:
+            user_id = str(uuid.uuid4())  # ids tipo "admin-001" -> UUID válido
+    return make_user(role=role, tenant=tenant, uid=user_id)[1]
 
 
 def auth_headers(token: str, tenant: str = "default") -> dict:
@@ -62,23 +61,23 @@ def test_release_guarda_owner_user_id():
     assert data.get("owner_user_id") == user_id
 
 
-def test_release_sin_token_no_tiene_owner():
-    """Release creada sin JWT tiene owner_user_id null (legacy)."""
+def test_release_sin_token_es_rechazada():
+    """Sin JWT no se puede crear nada (antes se creaba una release sin dueño)."""
     resp = client.post(
         "/api/releases",
         json=create_release_payload(),
-        headers={
-            "X-User-Role": "artist",
-            "X-Tenant-Id": "default",
-            "Content-Type": "application/json",
-        },
+        headers={"X-Tenant-Id": "default", "Content-Type": "application/json"},
     )
-    assert resp.status_code in (200, 201)
-    data = resp.json()
-    # owner_user_id puede ser null o no estar — ambos son válidos
-    assert data.get("owner_user_id") is None or "anonymous" not in str(
-        data.get("owner_user_id", "")
+    assert resp.status_code == 401
+
+
+def test_headers_legacy_no_dan_privilegios():
+    """X-User-Role: admin ya no sirve para hacerse pasar por admin."""
+    resp = client.get(
+        "/api/releases",
+        headers={"X-User-Role": "admin", "X-User-Id": "x", "X-Tenant-Id": "default"},
     )
+    assert resp.status_code == 401
 
 
 # ── Tests de listado ─────────────────────────────────────────────

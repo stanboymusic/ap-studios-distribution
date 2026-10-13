@@ -3,8 +3,10 @@ Auth endpoints: register, login, refresh, me, logout.
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from app.core.security import (
     hash_password,
@@ -14,22 +16,34 @@ from app.core.security import (
     decode_token,
 )
 from app.models.user import User
+from app.core.paths import is_valid_tenant_id
+from app.core.ratelimit import client_ip, is_limited, record, reset
 from app.repositories import user_repository as user_repo
 from app.services.notification_service import notify_admin_new_artist, notify_welcome
+from app.services.tenant_service import TenantService
+
+logger = logging.getLogger(__name__)
+
+# Hash de relleno: login con email inexistente tarda lo mismo que uno real (evita enumerar cuentas por tiempo).
+_DUMMY_HASH = hash_password("not-a-real-password")
+LOGIN_MAX_FAILS = 5
+LOGIN_WINDOW = 15 * 60
+REGISTER_MAX = 10
+REGISTER_WINDOW = 60 * 60
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=128)
     role: str = "artist"
     tenant_id: str = "default"
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
     tenant_id: str = "default"
 
 
@@ -53,44 +67,67 @@ def _issue_tokens(user: User) -> dict:
 
 
 @router.post("/register")
-def register(body: RegisterRequest):
-    # Solo se permite registrar artistas desde la API pública
-    # El rol "admin" solo se puede crear via create_admin.py script
-    ALLOWED_PUBLIC_ROLES = {"artist", "staff"}
-    if body.role not in ALLOWED_PUBLIC_ROLES:
+def register(body: RegisterRequest, request: Request):
+    # El registro público SOLO crea artistas. admin/staff se crean con scripts/create_admin.py
+    # o desde el panel de administración. (Antes se aceptaba "staff", que equivale a admin.)
+    if body.role != "artist":
         raise HTTPException(
             status_code=403,
-            detail="Role 'admin' cannot be created via public registration",
+            detail="Admin and staff accounts cannot be created via public registration",
         )
 
-    existing = user_repo.get_by_email(body.email, body.tenant_id)
-    if existing:
-        raise HTTPException(status_code=409, detail="Email already registered")
+    ip = client_ip(request)
+    rl_key = f"register:{ip}"
+    if is_limited(rl_key, REGISTER_MAX, REGISTER_WINDOW):
+        raise HTTPException(status_code=429, detail="Too many registrations. Try again later.")
+
+    tenant_id = (body.tenant_id or "default").strip()
+    if not is_valid_tenant_id(tenant_id) or not TenantService.get_tenant(tenant_id):
+        raise HTTPException(status_code=400, detail="Unknown tenant")
+
+    record(rl_key, REGISTER_WINDOW)
 
     user = User(
         email=body.email,
         hashed_password=hash_password(body.password),
-        role=body.role,
-        tenant_id=body.tenant_id,
+        role="artist",
+        tenant_id=tenant_id,
     )
-    user_repo.create(user)
-    notify_welcome(email=user.email, artist_name=user.email.split("@")[0])
-    notify_admin_new_artist(
-        artist_email=user.email,
-        registered_at=user.created_at,
-        tenant_id=user.tenant_id,
-        contract_signed=False,
-    )
+    try:
+        user_repo.create(user)
+    except user_repo.DuplicateEmailError:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    # Los correos son un extra: si fallan, la cuenta ya existe y no debe responder 500.
+    try:
+        notify_welcome(email=user.email, artist_name=user.email.split("@")[0])
+        notify_admin_new_artist(
+            artist_email=user.email,
+            registered_at=user.created_at,
+            tenant_id=user.tenant_id,
+            contract_signed=False,
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Registration notification failed: %s", exc)
     return _issue_tokens(user)
 
 
 @router.post("/login")
-def login(body: LoginRequest):
-    user = user_repo.get_by_email(body.email, body.tenant_id)
-    if not user or not verify_password(body.password, user.hashed_password):
+def login(body: LoginRequest, request: Request):
+    tenant_id = (body.tenant_id or "default").strip()
+    email_key = body.email.strip().lower()
+    rl_key = f"login:{client_ip(request)}:{tenant_id}:{email_key}"
+    if is_limited(rl_key, LOGIN_MAX_FAILS, LOGIN_WINDOW):
+        raise HTTPException(status_code=429, detail="Too many attempts. Try again in a few minutes.")
+
+    user = user_repo.get_by_email(body.email, tenant_id) if is_valid_tenant_id(tenant_id) else None
+    ok = verify_password(body.password, user.hashed_password if user else _DUMMY_HASH)
+    if not user or not ok:
+        record(rl_key, LOGIN_WINDOW)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account disabled")
+    reset(rl_key)
     return _issue_tokens(user)
 
 
@@ -100,7 +137,8 @@ def refresh(body: RefreshRequest):
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    user = user_repo.get_by_id(payload["sub"], payload.get("tenant_id", "default"))
+    tenant_id = payload.get("tenant_id", "default")
+    user = user_repo.get_by_id(payload["sub"], tenant_id) if is_valid_tenant_id(tenant_id) else None
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or disabled")
 

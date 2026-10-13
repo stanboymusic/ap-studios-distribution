@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from app.core.paths import storage_path, tenant_root
+from app.core.filelock import atomic_write_json, file_lock, read_json
+from app.core.paths import is_valid_tenant_id, storage_path, tenant_root
 
 
-TENANTS_INDEX = storage_path("tenants", "index.json")
+def _index_path():
+    # Calculado en cada llamada (no al importar) para poder aislar el storage en tests.
+    return storage_path("tenants", "index.json")
 
 
 def _now() -> str:
@@ -19,17 +21,18 @@ def _now() -> str:
 class TenantService:
     @staticmethod
     def _ensure_index():
-        TENANTS_INDEX.parent.mkdir(parents=True, exist_ok=True)
-        if not TENANTS_INDEX.exists():
-            TENANTS_INDEX.write_text(json.dumps([], indent=2), encoding="utf-8")
+        path = _index_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(path, "x", encoding="utf-8") as f:
+                f.write("[]")
+        except FileExistsError:
+            pass
 
     @staticmethod
     def list_tenants() -> List[Dict[str, Any]]:
         TenantService._ensure_index()
-        try:
-            return json.loads(TENANTS_INDEX.read_text(encoding="utf-8"))
-        except Exception:
-            return []
+        return read_json(_index_path(), list)
 
     @staticmethod
     def get_tenant(tenant_id: str) -> Optional[Dict[str, Any]]:
@@ -53,19 +56,23 @@ class TenantService:
         tid = (tenant_id or "").strip()
         if not tid:
             tid = "tenant-" + str(uuid4())
-        tenants = TenantService.list_tenants()
-        if any(t.get("id") == tid for t in tenants):
-            return next(t for t in tenants if t.get("id") == tid)
+        if not is_valid_tenant_id(tid):
+            raise ValueError("Invalid tenant id")
+        TenantService._ensure_index()
+        with file_lock(_index_path()):
+            tenants = read_json(_index_path(), list)
+            if any(t.get("id") == tid for t in tenants):
+                return next(t for t in tenants if t.get("id") == tid)
 
-        t = {
-            "id": tid,
-            "name": name or tid,
-            "slug": (name or tid).lower().replace(" ", "-"),
-            "settings": {"branding": {}, "demo_mode": False},
-            "created_at": _now(),
-        }
-        tenants.append(t)
-        TENANTS_INDEX.write_text(json.dumps(tenants, indent=2), encoding="utf-8")
+            t = {
+                "id": tid,
+                "name": name or tid,
+                "slug": (name or tid).lower().replace(" ", "-"),
+                "settings": {"branding": {}, "demo_mode": False},
+                "created_at": _now(),
+            }
+            tenants.append(t)
+            atomic_write_json(_index_path(), tenants)
 
         # Ensure tenant root exists
         tenant_root(tid).mkdir(parents=True, exist_ok=True)

@@ -87,8 +87,8 @@ def test_register_auto_login():
     assert me.json()["role"] == "artist"
 
 
-def test_register_staff_permitido():
-    """El rol staff sí se puede registrar públicamente."""
+def test_register_staff_bloqueado():
+    """staff equivale a admin: NO se puede crear por registro público (se asigna desde el panel admin)."""
     resp = client.post(
         "/api/auth/register",
         json={
@@ -98,4 +98,4 @@ def test_register_staff_permitido():
             "tenant_id": "default",
         },
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 403

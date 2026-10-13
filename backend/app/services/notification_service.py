@@ -62,3 +62,106 @@ def notify_contract_accepted(email: str, artist_name: str, version: str, accepte
             "ip_address": ip_address,
         },
     ))
+
+
+# ── Entregas y regalías ──────────────────────────────────────────
+# (Estas funciones se importaban desde delivery.py, admin_royalties.py y royalty_engine.py
+#  pero no existían: la API entera fallaba con ImportError al arrancar.)
+
+def notify_release_delivered(
+    email: str,
+    artist_name: str,
+    release_title: str,
+    release_type: str = "Single",
+    upc: Optional[str] = None,
+    release_date=None,
+    territories: str = "Worldwide",
+):
+    release_type = getattr(release_type, "value", release_type)
+    _fire(send_template_email(
+        to_email=email,
+        subject=f"Tu lanzamiento «{release_title}» fue enviado a las plataformas 🚀",
+        template_name="release_delivered.html",
+        context={
+            "artist_name": artist_name or email.split("@")[0],
+            "release_title": release_title,
+            "release_type": str(release_type),
+            "upc": upc or "Pendiente",
+            "release_date": str(release_date) if release_date else "Por confirmar",
+            "territories": territories or "Worldwide",
+        },
+    ))
+
+
+def notify_payout_created(
+    email: str,
+    artist_name: str,
+    amount: float,
+    currency: str,
+    method: str,
+    note: Optional[str] = None,
+):
+    _fire(send_template_email(
+        to_email=email,
+        subject="Solicitud de pago registrada",
+        template_name="payout_created.html",
+        context={
+            "artist_name": artist_name or email.split("@")[0],
+            "amount": f"{float(amount):,.2f}",
+            "currency": currency,
+            "method": method or "",
+            "note": note or "",
+        },
+    ))
+
+
+def notify_payout_processed(
+    email: str,
+    artist_name: str,
+    amount: float,
+    currency: str,
+    method: str,
+    reference: Optional[str] = None,
+    paid_at: Optional[str] = None,
+):
+    _fire(send_template_email(
+        to_email=email,
+        subject="Tu pago fue procesado ✓",
+        template_name="payout_processed.html",
+        context={
+            "artist_name": artist_name or email.split("@")[0],
+            "amount": f"{float(amount):,.2f}",
+            "currency": currency,
+            "method": method or "",
+            "reference": reference or "—",
+            "paid_at": _fmt_date(paid_at),
+        },
+    ))
+
+
+def notify_royalties_available(
+    email: str,
+    artist_name: str,
+    period: str,
+    streams: int,
+    gross_amount: float,
+    net_amount: float,
+    commission_amount: float,
+    available_balance: float,
+    top_dsp: str = "Spotify",
+):
+    _fire(send_template_email(
+        to_email=email,
+        subject=f"Nuevas regalías disponibles ({period})",
+        template_name="royalties_available.html",
+        context={
+            "artist_name": artist_name or email.split("@")[0],
+            "period": period,
+            "streams": f"{int(streams):,}",
+            "gross_amount": f"{float(gross_amount):,.2f}",
+            "net_amount": f"{float(net_amount):,.2f}",
+            "commission_amount": f"{float(commission_amount):,.2f}",
+            "available_balance": f"{float(available_balance):,.2f}",
+            "top_dsp": top_dsp or "Spotify",
+        },
+    ))

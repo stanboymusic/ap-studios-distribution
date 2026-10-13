@@ -41,7 +41,7 @@ class ErnJsonParser:
             resources[k] = Resource(internal_id=k, **filtered_res_data)
             
             if res_data.get("track_id"):
-                resource_track_id_map[UUID(res_data["track_id"])] = k
+                resource_track_id_map[UUID(str(res_data["track_id"]).replace("TRK-", "").strip())] = k
 
         releases = {}
         for k, v in payload.get("releases", {}).items():
@@ -76,7 +76,7 @@ class ErnJsonParser:
                 rc = RightsConfiguration(
                     scope=rights_payload.get("scope", "release"),
                     release_id=UUID(release_id),
-                    track_id=UUID(rights_payload["track_id"]) if rights_payload.get("track_id") else None
+                    track_id=UUID(str(rights_payload["track_id"]).replace("TRK-", "").strip()) if rights_payload.get("track_id") else None
                 )
                 for s in rights_payload.get("shares", []):
                     # Robust mapping from frontend CamelCase or snake_case

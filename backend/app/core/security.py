@@ -11,7 +11,42 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = os.getenv("AP_SECRET_KEY") or secrets.token_hex(32)
+def _load_secret_key() -> str:
+    """
+    Clave de firma de los JWT.
+    - Producción: AP_SECRET_KEY es obligatoria (si no, tokens distintos por proceso
+      y reinicio => sesiones rotas y el worker no puede autenticarse).
+    - Desarrollo: si falta, se genera UNA vez y se guarda en storage/.dev_secret_key.
+    """
+    env_key = (os.getenv("AP_SECRET_KEY") or "").strip()
+    if env_key:
+        if len(env_key) < 32:
+            raise RuntimeError("AP_SECRET_KEY must be at least 32 characters")
+        return env_key
+    if (os.getenv("APP_ENV") or "").strip().lower() in {"prod", "production"}:
+        raise RuntimeError("AP_SECRET_KEY is required when APP_ENV=production")
+
+    from app.core.paths import storage_path
+
+    key_file = storage_path(".dev_secret_key")
+    try:
+        if key_file.exists():
+            value = key_file.read_text(encoding="utf-8").strip()
+            if len(value) >= 32:
+                return value
+        key_file.parent.mkdir(parents=True, exist_ok=True)
+        value = secrets.token_hex(32)
+        key_file.write_text(value, encoding="utf-8")
+        try:
+            os.chmod(key_file, 0o600)
+        except OSError:
+            pass
+        return value
+    except OSError:
+        return secrets.token_hex(32)
+
+
+SECRET_KEY = _load_secret_key()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))

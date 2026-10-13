@@ -46,8 +46,6 @@ export default function StepTracks({ onNext, onBack }: any) {
         throw new Error(data?.detail || "API Error");
       }
 
-      console.log('DEBUG: Track response:', data);
-
       if (data.error) {
         alert("Error del servidor: " + data.error);
         return;
@@ -60,7 +58,7 @@ export default function StepTracks({ onNext, onBack }: any) {
         duration_seconds: data.duration_seconds,
         explicit: data.explicit,
         isrc: data.isrc,
-        file_path: data.file_path
+        file_path: data.file_name || data.file_path
       };
 
       const updatedTracks = [...tracks, newTrack];

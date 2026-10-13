@@ -2,22 +2,14 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from app.core.security import create_access_token
 from app.main import app
+from tests.helpers import make_user
 
 client = TestClient(app)
 
 
 def token(role="artist", uid=None):
-    uid = uid or str(uuid.uuid4())
-    return create_access_token(
-        {
-            "sub": uid,
-            "role": role,
-            "tenant_id": "default",
-            "email": f"{uid}@t.io",
-        }
-    )
+    return make_user(role=role, uid=uid)[1]
 
 
 def headers(tok):

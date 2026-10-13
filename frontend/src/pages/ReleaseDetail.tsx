@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch, API_BASE } from "../api/client";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { AuthImage } from "../components/AuthImage";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/Table";
 
 type ReleaseDetailResponse = {
@@ -208,7 +209,7 @@ export default function ReleaseDetail({
               <h3 className="text-sm font-semibold" style={{ color: "var(--mist)" }}>Artwork</h3>
               <div className="mt-3">
                 {artworkUrl ? (
-                  <img
+                  <AuthImage
                     src={artworkUrl}
                     alt="Artwork"
                     className="w-full max-w-[320px] rounded-xl"

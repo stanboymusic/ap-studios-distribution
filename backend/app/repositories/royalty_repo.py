@@ -6,46 +6,39 @@ Storage layout:
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Optional
 
-from app.core.paths import storage_path
+from app.core.paths import safe_tenant_id, storage_path
+from app.core.filelock import atomic_write_json, file_lock, read_json
 from app.models.royalty import RoyaltyStatement, Payout
 
 
 # ── Internal helpers ─────────────────────────────────────────────
 
 def _file(tenant_id: str, name: str) -> Path:
-    path = storage_path("royalties", tenant_id)
+    path = storage_path("royalties", safe_tenant_id(tenant_id))
     path.mkdir(parents=True, exist_ok=True)
     return path / f"{name}.json"
 
 
 def _load(tenant_id: str, name: str) -> list[dict]:
-    f = _file(tenant_id, name)
-    if not f.exists():
-        return []
-    try:
-        return json.loads(f.read_text(encoding="utf-8"))
-    except Exception:
-        return []
+    # Si el archivo está corrupto lanza error (antes devolvía [] y se perdía el historial de regalías).
+    return read_json(_file(tenant_id, name), list)
 
 
 def _save(tenant_id: str, name: str, data: list[dict]) -> None:
-    _file(tenant_id, name).write_text(
-        json.dumps(data, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    atomic_write_json(_file(tenant_id, name), data)
 
 
 # ── Statements ───────────────────────────────────────────────────
 
 def save_statement(stmt: RoyaltyStatement) -> RoyaltyStatement:
-    stmts = _load(stmt.tenant_id, "statements")
-    stmts = [s for s in stmts if s.get("id") != stmt.id]
-    stmts.append(stmt.to_dict())
-    _save(stmt.tenant_id, "statements", stmts)
+    with file_lock(_file(stmt.tenant_id, "statements")):
+        stmts = _load(stmt.tenant_id, "statements")
+        stmts = [s for s in stmts if s.get("id") != stmt.id]
+        stmts.append(stmt.to_dict())
+        _save(stmt.tenant_id, "statements", stmts)
     return stmt
 
 
@@ -83,10 +76,11 @@ def statement_exists(dsr_id: str, isrc: str, period: str, tenant_id: str) -> boo
 # ── Payouts ──────────────────────────────────────────────────────
 
 def save_payout(payout: Payout) -> Payout:
-    payouts = _load(payout.tenant_id, "payouts")
-    payouts = [p for p in payouts if p.get("id") != payout.id]
-    payouts.append(payout.to_dict())
-    _save(payout.tenant_id, "payouts", payouts)
+    with file_lock(_file(payout.tenant_id, "payouts")):
+        payouts = _load(payout.tenant_id, "payouts")
+        payouts = [p for p in payouts if p.get("id") != payout.id]
+        payouts.append(payout.to_dict())
+        _save(payout.tenant_id, "payouts", payouts)
     return payout
 
 

@@ -5,6 +5,9 @@ services:
     ports:
       - "8000:8000"
     environment:
+      AP_SECRET_KEY: ${AP_SECRET_KEY:?Define AP_SECRET_KEY (min 32 chars) en tu archivo .env}
+      APP_ENV: ${APP_ENV:-development}
+      AP_CORS_ORIGINS: ${AP_CORS_ORIGINS:-}
       VALIDATOR_API_URL: http://validator-api:6060
       DELIVERY_QUEUE_MODE: celery
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -28,6 +31,7 @@ services:
     container_name: apstudios-delivery-worker
     command: celery -A workers.delivery_worker.celery_app worker --loglevel=INFO
     environment:
+      AP_SECRET_KEY: ${AP_SECRET_KEY:?Define AP_SECRET_KEY (min 32 chars) en tu archivo .env}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       INTERNAL_API_BASE_URL: http://app:8000
@@ -50,7 +54,7 @@ services:
     image: redis:7-alpine
     container_name: apstudios-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   db:
     image: postgres:15
@@ -58,9 +62,9 @@ services:
     environment:
       POSTGRES_DB: apstudios
       POSTGRES_USER: apstudios
-      POSTGRES_PASSWORD: apstudios
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apstudios}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - apstudios-postgres:/var/lib/postgresql/data
 
@@ -70,10 +74,10 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: apstudios
-      MINIO_ROOT_PASSWORD: apstudios123
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-apstudios123}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - apstudios-minio:/data
 

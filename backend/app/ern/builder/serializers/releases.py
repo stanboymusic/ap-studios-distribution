@@ -40,8 +40,10 @@ def validate_upc_for_ern(upc: str | None, release_id: str | None = None) -> str:
             "(expected exactly 12 numeric digits)."
         )
 
+    # UPC-A estándar (GS1): los dígitos en posición impar (1º, 3º, ...) pesan x3.
+    # (Antes estaban invertidos y se rechazaba todo UPC válido, incluidos los que genera el sistema.)
     digits = [int(d) for d in candidate]
-    total = sum(d * (3 if i % 2 == 1 else 1) for i, d in enumerate(digits[:11]))
+    total = sum(d * (3 if i % 2 == 0 else 1) for i, d in enumerate(digits[:11]))
     expected_check = (10 - (total % 10)) % 10
     if digits[11] != expected_check:
         release_hint = f" for release {release_id}" if release_id else ""

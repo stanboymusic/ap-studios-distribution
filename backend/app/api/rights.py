@@ -9,6 +9,7 @@ from app.services.mwn_store import mwn_store
 from uuid import UUID
 import logging
 import os
+from app.core.auth import ensure_authenticated, ensure_release_access, is_admin
 
 router = APIRouter(prefix="/rights", tags=["Rights"])
 logger = logging.getLogger(__name__)
@@ -110,11 +111,28 @@ def _trigger_mwn_if_needed(tenant_id: str, rights_config: RightsConfiguration, r
 @router.get("/configurations")
 def list_rights_configurations(request: Request):
     tenant_id = _tenant_id(request)
-    return [c.model_dump() for c in RightsStore.list_configurations(tenant_id)]
+    configs = RightsStore.list_configurations(tenant_id)
+    if not is_admin(request):
+        # Un artista solo ve las configuraciones de SUS releases (antes veía las de todo el tenant).
+        uid = ensure_authenticated(request)
+        mine = {
+            str(r.id)
+            for r in CatalogService.get_releases(tenant_id=tenant_id)
+            if (getattr(r, "owner_user_id", None) or "") == uid
+        }
+        configs = [c for c in configs if str(c.release_id) in mine]
+    return [c.model_dump() for c in configs]
 
 @router.post("/configurations")
 def create_rights_configuration(payload: RightsConfigurationCreate, request: Request):
     tenant_id = _tenant_id(request)
+    ensure_authenticated(request)
+
+    # El release debe existir y ser tuyo (o ser admin). Antes se podía escribir derechos sobre releases ajenos.
+    target = CatalogService.get_release_by_id(payload.release_id, tenant_id=tenant_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Release not found")
+    ensure_release_access(request, target)
     config = RightsConfiguration(
         scope=payload.scope,
         release_id=payload.release_id,

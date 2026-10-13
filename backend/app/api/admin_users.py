@@ -128,6 +128,9 @@ def patch_user(user_id: str, body: PatchUserRequest, request: Request):
             detail="Cannot assign admin role via API",
         )
 
+    if body.role is not None and body.role not in {"artist", "staff"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
     updates = {}
     if body.is_active is not None:
         updates["is_active"] = body.is_active
@@ -142,6 +145,11 @@ def patch_user(user_id: str, body: PatchUserRequest, request: Request):
     updated = user_repo.update(user_id, updates, tenant_id)
     if not updated:
         raise HTTPException(status_code=500, detail="Update failed")
+
+    # Desactivar o cambiar de rol debe surtir efecto de inmediato, no al expirar el token.
+    from app.middleware.auth import invalidate_user_cache
+
+    invalidate_user_cache(user_id)
 
     return _enrich_user(updated, tenant_id)
 

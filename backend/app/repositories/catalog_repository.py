@@ -219,14 +219,7 @@ def create_release(tenant_id: str, release: ReleaseDraft) -> ReleaseDraft:
 
 
 def delete_release(tenant_id: str, release_id: str) -> bool:
-    files = CatalogService._files(tenant_id)
-    releases = CatalogService._load_json(files["releases"], tenant_id)
-    before = len(releases)
-    releases = [r for r in releases if str(r.get("id")) != str(release_id)]
-    if len(releases) == before:
-        return False
-    CatalogService._save_json(files["releases"], releases, tenant_id)
-    return True
+    return CatalogService.delete_release(release_id, tenant_id=tenant_id)
 
 
 def create_track(tenant_id: str, release_id: str, track_data: dict) -> dict:

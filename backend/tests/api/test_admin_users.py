@@ -2,33 +2,18 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from app.core.security import create_access_token
 from app.main import app
+from tests.helpers import make_user
 
 client = TestClient(app)
 
 
 def admin_token() -> str:
-    return create_access_token(
-        {
-            "sub": "admin-test-001",
-            "role": "admin",
-            "tenant_id": "default",
-            "email": "admin@apstudios.io",
-        }
-    )
+    return make_user(role="admin")[1]
 
 
 def artist_token(user_id: str = None) -> str:
-    uid = user_id or str(uuid.uuid4())
-    return create_access_token(
-        {
-            "sub": uid,
-            "role": "artist",
-            "tenant_id": "default",
-            "email": f"{uid}@artist.io",
-        }
-    )
+    return make_user(role="artist", uid=user_id)[1]
 
 
 def admin_headers() -> dict:

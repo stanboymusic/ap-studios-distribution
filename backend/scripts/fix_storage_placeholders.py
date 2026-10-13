@@ -65,6 +65,8 @@ def scan_storage(fix_mode: bool = False):
                 data = json.loads(release_file.read_text(encoding="utf-8"))
             except Exception:
                 continue
+            if not isinstance(data, dict):  # índices/catálogos (listas) no son un release suelto
+                continue
 
             release_id = data.get("id") or data.get("release_id", "unknown")
             title = data.get("title", "untitled")

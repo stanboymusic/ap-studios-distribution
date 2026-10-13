@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.core.paths import tenant_path
 from app.ddex.ern_builder import build_ern
 from app.ern.builder.ern_builder import ErnBuilder
+from app.ern.builder.serializers.releases import ERNBuildError
 from app.ern.builder.json_parser import ErnJsonParser
 from app.ern.persistence.ern_store import ErnStore
 from app.models.release import ReleaseDraft
@@ -31,7 +32,7 @@ from app.services.xml_signer import XMLSigningError, sign_ern_xml
 from app.services.validation_history_service import ValidationHistoryService
 from app.services.validation_service import validate_release_draft
 from app.services.workbench_client import validate_ern
-from app.core.auth import ensure_release_access, require_admin
+from app.core.auth import ensure_release_access, is_admin, require_admin
 
 router = APIRouter(prefix="/validation", tags=["Validation"])
 logger = logging.getLogger(__name__)
@@ -75,6 +76,57 @@ def _append_manual_validation_history(
         }
     )
     release_obj.validation["history"] = history
+
+def _authorize_release(request: Request, release_id: str, tenant_id: str):
+    """
+    Valida release_id (UUID estricto => sin path traversal) y exige que el usuario sea
+    dueño o admin. Devuelve el release (o None solo para admin si aún no está en catálogo).
+    Antes este chequeo estaba dentro de `try/except Exception: pass` y el 403 se tragaba.
+    """
+    try:
+        rid = UUID(str(release_id).strip())
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid release_id (expected UUID)")
+    release_obj = CatalogService.get_release_by_id(rid, tenant_id=tenant_id)
+    if release_obj is None:
+        if is_admin(request):
+            return None
+        raise HTTPException(status_code=404, detail="Release not found")
+    ensure_release_access(request, release_obj)
+    return release_obj
+
+
+def _norm_track_id(value) -> str:
+    return str(value or "").replace("TRK-", "").strip().lower()
+
+
+def _apply_catalog_truth(payload: dict, release_obj) -> None:
+    """
+    El payload del ERN lo arma el navegador y trae valores de relleno (UPC "1234567890123",
+    ISRC "US-ABC-00"...). Los identificadores reales los asigna y guarda el servidor, así que
+    aquí se imponen sobre lo que mande el cliente: lo que llega a las plataformas sale del catálogo.
+    """
+    if release_obj is None:
+        return
+    upc = (getattr(release_obj, "upc", None) or "").strip()
+    if upc:
+        for rel in (payload.get("releases") or {}).values():
+            if isinstance(rel, dict):
+                rel["upc"] = upc
+                rel.pop("release_upc", None)
+
+    cat_tracks = [t for t in (getattr(release_obj, "tracks", None) or []) if isinstance(t, dict)]
+    by_id = {_norm_track_id(t.get("track_id")): t for t in cat_tracks if t.get("track_id")}
+    by_title = {(t.get("title") or "").strip().lower(): t for t in cat_tracks if t.get("title")}
+    for res in (payload.get("resources") or {}).values():
+        if not isinstance(res, dict) or res.get("type") != "SoundRecording":
+            continue
+        match = by_id.get(_norm_track_id(res.get("track_id"))) or by_title.get((res.get("title") or "").strip().lower())
+        if match and (match.get("isrc") or "").strip():
+            res["isrc"] = match["isrc"]
+            if match.get("track_id"):
+                res["track_id"] = match["track_id"]
+
 
 def sync_release_db(payload: dict):
     """Sincroniza los datos del payload del frontend con el Catálogo del backend."""
@@ -140,9 +192,9 @@ def sync_release_db(payload: dict):
                 }
                 payload_tracks.append(track_entry)
         
-        if payload_tracks:
-            # Note: We should probably use track_ids in the future, 
-            # but for now we keep tracks as a list of dicts in ReleaseDraft for compatibility
+        # Si el release ya tiene tracks en el catálogo, esos son la verdad (tienen la ruta real del
+        # audio, huella y duración). El payload del navegador solo rellena si el catálogo está vacío.
+        if payload_tracks and not (getattr(release_obj, "tracks", None) or []):
             release_obj.tracks = payload_tracks
 
     CatalogService.save_release(release_obj, tenant_id=tenant_id)
@@ -205,13 +257,7 @@ async def external_validate(
     try:
         if release_id:
             tenant_id = request.state.tenant_id
-            try:
-                rid = UUID(release_id)
-                release_obj = CatalogService.get_release_by_id(rid, tenant_id=tenant_id)
-                if release_obj:
-                    ensure_release_access(request, release_obj)
-            except Exception:
-                pass
+            _authorize_release(request, release_id, tenant_id)
             return validate_and_store(
                 content,
                 release_id=release_id,
@@ -227,13 +273,7 @@ async def external_validate(
 @router.get("/results/{release_id}")
 def get_external_validation_results(release_id: str, request: Request, limit: int = 50):
     tenant_id = request.state.tenant_id
-    try:
-        rid = UUID(release_id)
-        release_obj = CatalogService.get_release_by_id(rid, tenant_id=tenant_id)
-        if release_obj:
-            ensure_release_access(request, release_obj)
-    except Exception:
-        pass
+    _authorize_release(request, release_id, tenant_id)
     return {
         "release_id": release_id,
         "runs": get_stored_validations(release_id, tenant_id=tenant_id, limit=limit),
@@ -242,7 +282,11 @@ def get_external_validation_results(release_id: str, request: Request, limit: in
 
 @router.post("/sign/{release_id}")
 def sign_existing_ern(release_id: str, request: Request):
+    # La firma es un paso interno de la plataforma: solo personal. (Antes: cualquiera, y se
+    # escribía el archivo ANTES de comprobar el dueño.)
+    require_admin(request)
     tenant_id = request.state.tenant_id
+    _authorize_release(request, release_id, tenant_id)
     store = ErnStore()
     latest_path = store.base / release_id / "latest" / "ern.xml"
     if not latest_path.exists():
@@ -251,7 +295,8 @@ def sign_existing_ern(release_id: str, request: Request):
     try:
         signed = sign_ern_xml(latest_path.read_bytes(), force=True)
     except XMLSigningError as exc:
-        raise HTTPException(status_code=500, detail=f"Signing failed: {exc}") from exc
+        logger.error("Signing failed for %s: %s", release_id, exc)
+        raise HTTPException(status_code=500, detail="Signing failed") from exc
 
     if not signed.applied:
         raise HTTPException(status_code=400, detail=signed.message or "Signing not applied")
@@ -711,13 +756,7 @@ def get_validation_history(release_id: UUID, request: Request):
 @router.get("/ern/{release_id}/parsed")
 def get_parsed_ern(release_id: str, request: Request):
     tenant_id = request.state.tenant_id
-    try:
-        rid = UUID(release_id)
-        release_obj = CatalogService.get_release_by_id(rid, tenant_id=tenant_id)
-        if release_obj:
-            ensure_release_access(request, release_obj)
-    except Exception:
-        pass
+    _authorize_release(request, release_id, tenant_id)
     parsed_path = tenant_path(tenant_id, "validation", release_id, "parsed-latest.json")
     if parsed_path.exists():
         return json.loads(parsed_path.read_text(encoding="utf-8"))
@@ -741,6 +780,12 @@ def generate_ern(payload: dict, request: Request):
     try:
         logger.info(f"Generating ERN for payload: {payload.get('release_id')}")
         tenant_id = request.state.tenant_id
+        # Primero la autorización (barata y estricta), después el resto.
+        _auth_release_id = release_id_for_truth = (payload.get("release_id") or "").strip()
+        if not _auth_release_id and not is_admin(request):
+            raise HTTPException(status_code=400, detail="release_id is required")
+        if _auth_release_id:
+            _authorize_release(request, _auth_release_id, tenant_id)
         ern = payload.get("ern", {})
         profile_str = ern.get("profile", "AudioAlbum")
         logger.info(f"Profile: {profile_str}")
@@ -752,16 +797,11 @@ def generate_ern(payload: dict, request: Request):
         # Sincronizar datos con el Catálogo
         logger.info("Syncing with Catalog...")
         payload["tenant_id"] = tenant_id
-        release_id = (payload.get("release_id") or "").strip()
-        if release_id:
-            try:
-                release_uuid = UUID(release_id)
-                release_obj = CatalogService.get_release_by_id(release_uuid, tenant_id=tenant_id)
-                if release_obj:
-                    ensure_release_access(request, release_obj)
-            except Exception:
-                pass
         sync_release_db(payload)
+        _apply_catalog_truth(
+            payload,
+            CatalogService.get_release_by_id(UUID(release_id_for_truth), tenant_id=tenant_id) if release_id_for_truth else None,
+        )
 
         logger.info("Parsing payload with ErnJsonParser...")
         parser = ErnJsonParser()
@@ -846,9 +886,12 @@ def generate_ern(payload: dict, request: Request):
                 "message": signing.message,
             },
         }
+    except ERNBuildError as e:
+        # Datos incompletos/inválidos (ISRC, UPC...): es un problema del release, no del servidor.
+        raise HTTPException(status_code=422, detail=str(e))
     except XMLSigningError as e:
         logger.error(f"XML signing error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"XML signing error: {str(e)}")
+        raise HTTPException(status_code=500, detail="XML signing error")
     except Exception as e:
         logger.error(f"Error in generate_ern: {str(e)}", exc_info=True)
         raise e
@@ -856,13 +899,7 @@ def generate_ern(payload: dict, request: Request):
 @router.get("/ern/{release_id}/xml")
 def get_ern_xml(release_id: str, request: Request):
     tenant_id = request.state.tenant_id
-    try:
-        rid = UUID(release_id)
-        release_obj = CatalogService.get_release_by_id(rid, tenant_id=tenant_id)
-        if release_obj:
-            ensure_release_access(request, release_obj)
-    except Exception:
-        pass
+    _authorize_release(request, release_id, tenant_id)
     # Find latest version
     store = ErnStore()
     base = store.base / release_id / "latest"
@@ -884,16 +921,18 @@ def preview_ern(payload: dict, request: Request):
         tenant_id = request.state.tenant_id
         payload["tenant_id"] = tenant_id
         release_id = (payload.get("release_id") or "").strip()
+        if not release_id and not is_admin(request):
+            raise HTTPException(status_code=400, detail="release_id is required")
         if release_id:
-            try:
-                release_uuid = UUID(release_id)
-                release_obj = CatalogService.get_release_by_id(release_uuid, tenant_id=tenant_id)
-                if release_obj:
-                    ensure_release_access(request, release_obj)
-            except Exception:
-                pass
+            # Estricto: si el release es de otro usuario => 403/404 (no se traga el error).
+            _authorize_release(request, release_id, tenant_id)
         sync_release_db(payload)
-        
+        _rid_preview = (payload.get("release_id") or "").strip()
+        _apply_catalog_truth(
+            payload,
+            CatalogService.get_release_by_id(UUID(_rid_preview), tenant_id=tenant_id) if _rid_preview else None,
+        )
+
         # Simple preview based on payload
         ern = payload.get("ern", {})
         parties = payload.get("parties", {})

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 from typing import Any, Dict
 
 import requests
@@ -14,6 +15,25 @@ INTERNAL_API_BASE_URL = (os.getenv("INTERNAL_API_BASE_URL") or "http://127.0.0.1
 celery_app = Celery("delivery", broker=BROKER_URL, backend=BACKEND_URL)
 
 
+def _service_headers(tenant_id: str) -> Dict[str, str]:
+    """
+    Token de servicio de vida corta (firmado con AP_SECRET_KEY, que debe ser igual en app y worker).
+    Antes el worker llamaba a /api/delivery/sftp SIN credenciales y la API (que exige admin) respondía
+    403: las entregas en cola nunca llegaban a los DSPs.
+    """
+    from app.core.security import create_access_token
+
+    token = create_access_token(
+        {"sub": "system:delivery-worker", "role": "admin", "tenant_id": tenant_id},
+        expires_delta=timedelta(minutes=10),
+    )
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-Tenant-Id": tenant_id,
+        "Content-Type": "application/json",
+    }
+
+
 @celery_app.task(name="delivery.deliver_release", bind=True, max_retries=5)
 def deliver_release_task(self, release_id: str, connector_id: str, tenant_id: str = "default") -> Dict[str, Any]:
     url = f"{INTERNAL_API_BASE_URL}/api/delivery/sftp"
@@ -24,10 +44,7 @@ def deliver_release_task(self, release_id: str, connector_id: str, tenant_id: st
                 "release_id": release_id,
                 "connector_id": connector_id,
             },
-            headers={
-                "X-Tenant-Id": tenant_id,
-                "Content-Type": "application/json",
-            },
+            headers=_service_headers(tenant_id),
             timeout=120,
         )
     except requests.RequestException as exc:
